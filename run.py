@@ -1,3 +1,16 @@
+import os
+import sys
+
+# Forzar encoding UTF-8 en Windows antes de cualquier otra importación
+if sys.platform == 'win32':
+    os.environ['PYTHONIOENCODING'] = 'utf-8'
+    # Configurar locale para evitar problemas con caracteres especiales
+    try:
+        import locale
+        locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
+    except:
+        pass
+
 from app import create_app
 
 app = create_app()
