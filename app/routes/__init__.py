@@ -10,6 +10,7 @@ from .driver_truck import driver_truck_bp
 from .km_rate import km_rate_bp
 from .load_owner import load_owner_bp
 from .monthly_summary import monthly_summary_bp
+from .auth import auth_bp
 
 __all__ = [
     'driver_bp',
@@ -23,5 +24,6 @@ __all__ = [
     'driver_truck_bp',
     'km_rate_bp',
     'load_owner_bp',
-    'monthly_summary_bp'
+    'monthly_summary_bp',
+    'auth_bp'
 ]

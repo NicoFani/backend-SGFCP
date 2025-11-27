@@ -14,6 +14,11 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SECRET_KEY = os.getenv('SECRET_KEY', 'supersecretkey')
     
+    # JWT Configuration
+    JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'jwt-secret-key-change-in-production')
+    JWT_ACCESS_TOKEN_EXPIRES = 3600  # 1 hora
+    JWT_REFRESH_TOKEN_EXPIRES = 2592000  # 30 días
+    
     # Opciones del engine
     SQLALCHEMY_ENGINE_OPTIONS = {
         'pool_pre_ping': True,

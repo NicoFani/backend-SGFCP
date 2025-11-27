@@ -9,19 +9,28 @@ from ..schemas.trip import TripSchema, TripUpdateSchema
 class TripController:
     
     @staticmethod
-    def get_all_trips():
-        """Obtiene todos los viajes"""
+    def get_all_trips(current_user_id=None, is_admin=False):
+        """Obtiene todos los viajes (filtrados por conductor si no es admin)"""
         try:
-            trips = Trip.query.all()
+            if is_admin:
+                trips = Trip.query.all()
+            else:
+                # Los conductores solo ven sus propios viajes
+                trips = Trip.query.filter_by(driver_id=current_user_id).all()
             return jsonify([trip.to_dict() for trip in trips]), 200
         except SQLAlchemyError as e:
             return jsonify({'error': 'Error al obtener viajes', 'details': str(e)}), 500
 
     @staticmethod
-    def get_trip_by_id(trip_id):
-        """Obtiene un viaje por ID"""
+    def get_trip_by_id(trip_id, current_user_id=None, is_admin=False):
+        """Obtiene un viaje por ID (con validación de permisos)"""
         try:
             trip = Trip.query.get_or_404(trip_id)
+            
+            # Verificar permisos: solo admin o el conductor del viaje
+            if not is_admin and trip.driver_id != current_user_id:
+                return jsonify({'error': 'No tienes permisos para ver este viaje'}), 403
+            
             return jsonify(trip.to_dict()), 200
         except Exception as e:
             return jsonify({'error': 'Viaje no encontrado'}), 404
@@ -51,14 +60,50 @@ class TripController:
             return jsonify({'error': 'Error al crear viaje', 'details': str(e)}), 500
 
     @staticmethod
-    def update_trip(trip_id, data):
-        """Actualiza un viaje existente"""
+    def update_trip(trip_id, data, current_user_id=None, is_admin=False):
+        """Actualiza un viaje existente (admin puede todo, chofer solo ciertos campos)"""
         try:
             trip = Trip.query.get_or_404(trip_id)
+            
+            # Verificar permisos: solo admin o el conductor del viaje
+            if not is_admin and trip.driver_id != current_user_id:
+                return jsonify({'error': 'No tienes permisos para actualizar este viaje'}), 403
             
             # Validar datos
             schema = TripUpdateSchema()
             validated_data = schema.load(data)
+            
+            # Si es chofer, solo puede actualizar ciertos campos
+            if not is_admin:
+                allowed_fields = [
+                    'load_weight_on_load',      # Peso de carga (al iniciar)
+                    'load_weight_on_unload',    # Peso de descarga (al finalizar)
+                    'end_date',                 # Fecha fin (al finalizar)
+                    'state_id',                 # Estado (Pendiente -> En curso -> Finalizado)
+                    'load_owner_id',            # Dador de carga
+                    'rate_per_ton',             # Tarifa
+                ]
+                
+                # Filtrar solo campos permitidos
+                filtered_data = {k: v for k, v in validated_data.items() if k in allowed_fields}
+                
+                # Validar transiciones de estado
+                if 'state_id' in filtered_data:
+                    current_state = trip.state_id
+                    new_state = filtered_data['state_id']
+                    
+                    # Pendiente -> En curso OK
+                    # En curso -> Finalizado OK
+                    # Otras transiciones solo admin
+                    valid_transitions = [
+                        ('Pendiente', 'En curso'),
+                        ('En curso', 'Finalizado')
+                    ]
+                    
+                    if (current_state, new_state) not in valid_transitions:
+                        return jsonify({'error': f'Transición de estado no permitida: {current_state} -> {new_state}'}), 403
+                
+                validated_data = filtered_data
             
             # Actualizar campos
             for field, value in validated_data.items():

@@ -9,10 +9,14 @@ from ..schemas.driver import DriverSchema, DriverUpdateSchema
 class DriverController:
     
     @staticmethod
-    def get_all_drivers():
-        """Obtiene todos los conductores"""
+    def get_all_drivers(current_user_id=None, is_admin=False):
+        """Obtiene todos los conductores (solo admin puede ver todos)"""
         try:
-            drivers = Driver.query.all()
+            if is_admin:
+                drivers = Driver.query.all()
+            else:
+                # Los conductores solo pueden ver su propia información
+                drivers = Driver.query.filter_by(id=current_user_id).all()
             return jsonify([driver.to_dict() for driver in drivers]), 200
         except SQLAlchemyError as e:
             return jsonify({'error': 'Error al obtener conductores', 'details': str(e)}), 500

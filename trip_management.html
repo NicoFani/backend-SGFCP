@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SGFCP - Gestión de Viajes</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fa;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .navbar h1 {
+            font-size: 24px;
+        }
+
+        .navbar .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .navbar button {
+            background: #ff4757;
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+
+        .login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .login-box {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .login-box h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            color: #666;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tab:hover {
+            color: #667eea;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+
+        .card h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        button.btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        button.btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        button.btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        button.btn-warning {
+            background: #ffc107;
+            color: #333;
+        }
+
+        button.btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .trips-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .trip-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            transition: transform 0.2s;
+        }
+
+        .trip-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+        }
+
+        .trip-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .trip-id {
+            font-size: 20px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-pendiente {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-en-curso {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .status-finalizado {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .trip-details {
+            margin: 15px 0;
+        }
+
+        .trip-detail {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .trip-detail:last-child {
+            border-bottom: none;
+        }
+
+        .trip-detail label {
+            color: #666;
+            font-size: 13px;
+        }
+
+        .trip-detail span {
+            color: #333;
+            font-weight: 500;
+            font-size: 13px;
+        }
+
+        .trip-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .trip-actions button {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .expenses-list {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid #f0f0f0;
+        }
+
+        .expense-item {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .expense-info {
+            flex: 1;
+        }
+
+        .expense-type {
+            font-weight: 600;
+            color: #667eea;
+            font-size: 14px;
+        }
+
+        .expense-amount {
+            color: #dc3545;
+            font-weight: 700;
+            font-size: 16px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h2 {
+            color: #667eea;
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .alert {
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.6s linear infinite;
+            margin-left: 8px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state h3 {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Overlay -->
+    <div id="loginOverlay" class="login-overlay">
+        <div class="login-box">
+            <h2>🔐 Iniciar Sesión</h2>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label>Email:</label>
+                    <input type="email" id="loginEmail" value="admin@sgfcp.com" required>
+                </div>
+                <div class="form-group">
+                    <label>Contraseña:</label>
+                    <input type="password" id="loginPassword" value="123456" required>
+                </div>
+                <button type="submit" class="btn-primary" style="width: 100%;">Iniciar Sesión</button>
+            </form>
+            <div id="loginError" class="alert alert-error hidden"></div>
+            <div style="margin-top: 15px; font-size: 12px; color: #666;">
+                <strong>Credenciales:</strong><br>
+                Admin: admin@sgfcp.com / 123456<br>
+                Chofer: juan.perez@sgfcp.com / 123456
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="mainApp" class="hidden">
+        <nav class="navbar">
+            <h1>🚛 SGFCP - Gestión de Viajes</h1>
+            <div class="user-info">
+                <span id="userDisplay"></span>
+                <button onclick="logout()">Cerrar Sesión</button>
+            </div>
+        </nav>
+
+        <div class="container">
+            <!-- Tabs -->
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('trips')">🗺️ Mis Viajes</button>
+                <button id="adminTab" class="tab hidden" onclick="switchTab('admin')">⚙️ Crear Viaje (Admin)</button>
+            </div>
+
+            <!-- Trips Tab (Chofer y Admin) -->
+            <div id="trips-tab" class="tab-content active">
+                <div class="card">
+                    <h3>Mis Viajes</h3>
+                    <div id="tripsContainer"></div>
+                </div>
+            </div>
+
+            <!-- Admin Tab (Solo Admin) -->
+            <div id="admin-tab" class="tab-content">
+                <div class="card">
+                    <h3>Crear Nuevo Viaje</h3>
+                    <form id="createTripForm">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Origen *</label>
+                                <input type="text" id="tripOrigin" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Destino *</label>
+                                <input type="text" id="tripDestination" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Fecha Inicio *</label>
+                                <input type="date" id="tripStartDate" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Conductor *</label>
+                                <select id="tripDriver" required>
+                                    <option value="">Seleccionar...</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Cliente *</label>
+                                <select id="tripClient" required>
+                                    <option value="">Seleccionar...</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Dueño de Carga</label>
+                                <select id="tripLoadOwner">
+                                    <option value="">Seleccionar...</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Kilómetros Estimados</label>
+                                <input type="number" id="tripKms" step="0.1">
+                            </div>
+                            <div class="form-group">
+                                <label>Tarifa por Tonelada</label>
+                                <input type="number" id="tripRatePerTon" step="0.01">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-primary">Crear Viaje</button>
+                    </form>
+                    <div id="createTripResult"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Iniciar Viaje -->
+    <div id="startTripModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🚀 Iniciar Viaje</h2>
+                <button class="close-modal" onclick="closeModal('startTripModal')">&times;</button>
+            </div>
+            <form id="startTripForm">
+                <input type="hidden" id="startTripId">
+                <div class="form-group">
+                    <label>Dueño de Carga *</label>
+                    <select id="startLoadOwner" required>
+                        <option value="">Seleccionar...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Tarifa por Tonelada</label>
+                    <input type="number" id="startRatePerTon" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label>Peso de Carga (kg)</label>
+                    <input type="number" id="startLoadWeight" step="0.1">
+                </div>
+                <button type="submit" class="btn-primary">Iniciar Viaje</button>
+            </form>
+            <div id="startTripResult"></div>
+        </div>
+    </div>
+
+    <!-- Modal: Finalizar Viaje -->
+    <div id="endTripModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>✅ Finalizar Viaje</h2>
+                <button class="close-modal" onclick="closeModal('endTripModal')">&times;</button>
+            </div>
+            <form id="endTripForm">
+                <input type="hidden" id="endTripId">
+                <div class="form-group">
+                    <label>Fecha Fin *</label>
+                    <input type="date" id="endDate" required>
+                </div>
+                <div class="form-group">
+                    <label>Peso de Descarga (kg) *</label>
+                    <input type="number" id="endLoadWeight" step="0.1" required>
+                </div>
+                <button type="submit" class="btn-primary">Finalizar Viaje</button>
+            </form>
+            <div id="endTripResult"></div>
+        </div>
+    </div>
+
+    <!-- Modal: Agregar Gasto -->
+    <div id="addExpenseModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>💰 Agregar Gasto</h2>
+                <button class="close-modal" onclick="closeModal('addExpenseModal')">&times;</button>
+            </div>
+            <form id="addExpenseForm">
+                <input type="hidden" id="expenseTripId">
+                <div class="form-group">
+                    <label>Tipo de Gasto *</label>
+                    <select id="expenseType" required>
+                        <option value="">Seleccionar...</option>
+                        <option value="Viáticos">Viáticos</option>
+                        <option value="Multa">Multa</option>
+                        <option value="Reparaciones">Reparaciones</option>
+                        <option value="Combustible">Combustible</option>
+                        <option value="Peaje">Peaje</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Monto *</label>
+                    <input type="number" id="expenseAmount" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label>Descripción</label>
+                    <textarea id="expenseDescription" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Fecha *</label>
+                    <input type="date" id="expenseDate" required>
+                </div>
+                <button type="submit" class="btn-primary">Agregar Gasto</button>
+            </form>
+            <div id="addExpenseResult"></div>
+        </div>
+    </div>
+
+    <!-- Modal: Ver Gastos -->
+    <div id="viewExpensesModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>💰 Gastos del Viaje</h2>
+                <button class="close-modal" onclick="closeModal('viewExpensesModal')">&times;</button>
+            </div>
+            <div id="expensesList"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000';
+        let authToken = null;
+        let currentUser = null;
+        let drivers = [];
+        let clients = [];
+        let loadOwners = [];
+
+        // Login
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const errorDiv = document.getElementById('loginError');
+
+            try {
+                const response = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    authToken = data.access_token;
+                    currentUser = data.user;
+                    document.getElementById('loginOverlay').classList.add('hidden');
+                    document.getElementById('mainApp').classList.remove('hidden');
+                    document.getElementById('userDisplay').textContent = 
+                        `${currentUser.name} ${currentUser.surname} (${currentUser.is_admin ? 'Admin' : 'Chofer'})`;
+                    
+                    // Mostrar tab admin solo si es admin
+                    if (currentUser.is_admin) {
+                        document.getElementById('adminTab').classList.remove('hidden');
+                        await loadAdminData();
+                    }
+                    
+                    await loadTrips();
+                } else {
+                    errorDiv.textContent = data.error || 'Error al iniciar sesión';
+                    errorDiv.classList.remove('hidden');
+                }
+            } catch (error) {
+                errorDiv.textContent = 'Error de conexión. Asegúrate de que el servidor esté corriendo.';
+                errorDiv.classList.remove('hidden');
+            }
+        });
+
+        function logout() {
+            authToken = null;
+            currentUser = null;
+            document.getElementById('loginOverlay').classList.remove('hidden');
+            document.getElementById('mainApp').classList.add('hidden');
+            document.getElementById('loginPassword').value = '';
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+        }
+
+        async function apiCall(endpoint, options = {}) {
+            const response = await fetch(`${API_URL}${endpoint}`, {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`,
+                    ...options.headers
+                }
+            });
+            return response;
+        }
+
+        async function loadAdminData() {
+            try {
+                // Cargar drivers
+                const driversRes = await apiCall('/drivers/');
+                if (driversRes.ok) {
+                    drivers = await driversRes.json();
+                    const select = document.getElementById('tripDriver');
+                    drivers.forEach(d => {
+                        const option = document.createElement('option');
+                        option.value = d.id;
+                        option.textContent = `${d.name} ${d.surname}`;
+                        select.appendChild(option);
+                    });
+                }
+
+                // Cargar clients
+                const clientsRes = await apiCall('/clients/');
+                if (clientsRes.ok) {
+                    clients = await clientsRes.json();
+                    const select = document.getElementById('tripClient');
+                    clients.forEach(c => {
+                        const option = document.createElement('option');
+                        option.value = c.id;
+                        option.textContent = c.name;
+                        select.appendChild(option);
+                    });
+                }
+
+                // Cargar load owners
+                const loadOwnersRes = await apiCall('/load-owners/');
+                if (loadOwnersRes.ok) {
+                    loadOwners = await loadOwnersRes.json();
+                    [document.getElementById('tripLoadOwner'), document.getElementById('startLoadOwner')].forEach(select => {
+                        loadOwners.forEach(lo => {
+                            const option = document.createElement('option');
+                            option.value = lo.id;
+                            option.textContent = lo.name;
+                            select.appendChild(option);
+                        });
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading admin data:', error);
+            }
+        }
+
+        async function loadTrips() {
+            const container = document.getElementById('tripsContainer');
+            container.innerHTML = '<p>Cargando viajes...</p>';
+
+            try {
+                const response = await apiCall('/trips/');
+                if (response.ok) {
+                    const trips = await response.json();
+                    
+                    if (trips.length === 0) {
+                        container.innerHTML = `
+                            <div class="empty-state">
+                                <h3>No hay viajes asignados</h3>
+                                <p>Cuando tengas viajes asignados aparecerán aquí</p>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    container.innerHTML = '<div class="trips-grid"></div>';
+                    const grid = container.querySelector('.trips-grid');
+
+                    trips.forEach(trip => {
+                        const card = createTripCard(trip);
+                        grid.appendChild(card);
+                    });
+                } else {
+                    container.innerHTML = '<p class="alert alert-error">Error al cargar viajes</p>';
+                }
+            } catch (error) {
+                container.innerHTML = '<p class="alert alert-error">Error de conexión</p>';
+            }
+        }
+
+        function createTripCard(trip) {
+            const div = document.createElement('div');
+            div.className = 'trip-card';
+            
+            const statusClass = trip.state_id === 'Pendiente' ? 'status-pendiente' : 
+                              trip.state_id === 'En curso' ? 'status-en-curso' : 'status-finalizado';
+
+            let actions = '';
+            if (trip.state_id === 'Pendiente') {
+                actions = `<button class="btn-success" onclick="openStartTripModal(${trip.id})">▶️ Iniciar Viaje</button>`;
+            } else if (trip.state_id === 'En curso') {
+                actions = `
+                    <button class="btn-primary" onclick="openAddExpenseModal(${trip.id})">💰 Agregar Gasto</button>
+                    <button class="btn-warning" onclick="openEndTripModal(${trip.id})">✅ Finalizar</button>
+                `;
+            } else {
+                actions = `<button class="btn-primary" onclick="viewExpenses(${trip.id})">📊 Ver Gastos</button>`;
+            }
+
+            div.innerHTML = `
+                <div class="trip-header">
+                    <div class="trip-id">#${trip.id}</div>
+                    <div class="status-badge ${statusClass}">${trip.state_id}</div>
+                </div>
+                <div class="trip-details">
+                    <div class="trip-detail">
+                        <label>Origen:</label>
+                        <span>${trip.origin}</span>
+                    </div>
+                    <div class="trip-detail">
+                        <label>Destino:</label>
+                        <span>${trip.destination}</span>
+                    </div>
+                    <div class="trip-detail">
+                        <label>Fecha Inicio:</label>
+                        <span>${trip.start_date || 'N/A'}</span>
+                    </div>
+                    ${trip.end_date ? `
+                    <div class="trip-detail">
+                        <label>Fecha Fin:</label>
+                        <span>${trip.end_date}</span>
+                    </div>` : ''}
+                    ${trip.load_weight_on_load ? `
+                    <div class="trip-detail">
+                        <label>Peso Carga:</label>
+                        <span>${trip.load_weight_on_load} kg</span>
+                    </div>` : ''}
+                    ${trip.load_weight_on_unload ? `
+                    <div class="trip-detail">
+                        <label>Peso Descarga:</label>
+                        <span>${trip.load_weight_on_unload} kg</span>
+                    </div>` : ''}
+                </div>
+                <div class="trip-actions">
+                    ${actions}
+                </div>
+            `;
+
+            return div;
+        }
+
+        // Create Trip (Admin)
+        document.getElementById('createTripForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const resultDiv = document.getElementById('createTripResult');
+            
+            const data = {
+                origin: document.getElementById('tripOrigin').value,
+                destination: document.getElementById('tripDestination').value,
+                start_date: document.getElementById('tripStartDate').value,
+                driver_id: parseInt(document.getElementById('tripDriver').value),
+                client_id: parseInt(document.getElementById('tripClient').value),
+                load_owner_id: parseInt(document.getElementById('tripLoadOwner').value) || null,
+                estimated_kms: parseFloat(document.getElementById('tripKms').value) || null,
+                rate_per_ton: parseFloat(document.getElementById('tripRatePerTon').value) || null,
+                state_id: 'Pendiente'
+            };
+
+            try {
+                const response = await apiCall('/trips/', {
+                    method: 'POST',
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    resultDiv.innerHTML = '<p class="alert alert-success">Viaje creado exitosamente!</p>';
+                    document.getElementById('createTripForm').reset();
+                    await loadTrips();
+                } else {
+                    resultDiv.innerHTML = `<p class="alert alert-error">${result.error || 'Error al crear viaje'}</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = '<p class="alert alert-error">Error de conexión</p>';
+            }
+        });
+
+        function openStartTripModal(tripId) {
+            document.getElementById('startTripId').value = tripId;
+            document.getElementById('startTripModal').classList.add('show');
+        }
+
+        function openEndTripModal(tripId) {
+            document.getElementById('endTripId').value = tripId;
+            document.getElementById('endDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('endTripModal').classList.add('show');
+        }
+
+        function openAddExpenseModal(tripId) {
+            document.getElementById('expenseTripId').value = tripId;
+            document.getElementById('expenseDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('addExpenseModal').classList.add('show');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('show');
+        }
+
+        // Start Trip
+        document.getElementById('startTripForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const resultDiv = document.getElementById('startTripResult');
+            const tripId = document.getElementById('startTripId').value;
+
+            const data = {
+                state_id: 'En curso',
+                load_owner_id: parseInt(document.getElementById('startLoadOwner').value) || null,
+                rate_per_ton: parseFloat(document.getElementById('startRatePerTon').value) || null,
+                load_weight_on_load: parseFloat(document.getElementById('startLoadWeight').value) || null
+            };
+
+            try {
+                const response = await apiCall(`/trips/${tripId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    resultDiv.innerHTML = '<p class="alert alert-success">Viaje iniciado exitosamente!</p>';
+                    setTimeout(() => {
+                        closeModal('startTripModal');
+                        loadTrips();
+                    }, 1500);
+                } else {
+                    resultDiv.innerHTML = `<p class="alert alert-error">${result.error || 'Error al iniciar viaje'}</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = '<p class="alert alert-error">Error de conexión</p>';
+            }
+        });
+
+        // End Trip
+        document.getElementById('endTripForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const resultDiv = document.getElementById('endTripResult');
+            const tripId = document.getElementById('endTripId').value;
+
+            const data = {
+                state_id: 'Finalizado',
+                end_date: document.getElementById('endDate').value,
+                load_weight_on_unload: parseFloat(document.getElementById('endLoadWeight').value)
+            };
+
+            try {
+                const response = await apiCall(`/trips/${tripId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    resultDiv.innerHTML = '<p class="alert alert-success">Viaje finalizado exitosamente!</p>';
+                    setTimeout(() => {
+                        closeModal('endTripModal');
+                        loadTrips();
+                    }, 1500);
+                } else {
+                    resultDiv.innerHTML = `<p class="alert alert-error">${result.error || 'Error al finalizar viaje'}</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = '<p class="alert alert-error">Error de conexión</p>';
+            }
+        });
+
+        // Add Expense
+        document.getElementById('addExpenseForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const resultDiv = document.getElementById('addExpenseResult');
+
+            const data = {
+                trip_id: parseInt(document.getElementById('expenseTripId').value),
+                expense_type: document.getElementById('expenseType').value,
+                amount: parseFloat(document.getElementById('expenseAmount').value),
+                description: document.getElementById('expenseDescription').value || '',
+                date: document.getElementById('expenseDate').value
+            };
+
+            try {
+                const response = await apiCall('/expenses/', {
+                    method: 'POST',
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    resultDiv.innerHTML = '<p class="alert alert-success">Gasto agregado exitosamente!</p>';
+                    document.getElementById('addExpenseForm').reset();
+                    setTimeout(() => {
+                        closeModal('addExpenseModal');
+                    }, 1500);
+                } else {
+                    resultDiv.innerHTML = `<p class="alert alert-error">${result.error || 'Error al agregar gasto'}</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = '<p class="alert alert-error">Error de conexión</p>';
+            }
+        });
+
+        async function viewExpenses(tripId) {
+            const modal = document.getElementById('viewExpensesModal');
+            const listDiv = document.getElementById('expensesList');
+            listDiv.innerHTML = '<p>Cargando gastos...</p>';
+            modal.classList.add('show');
+
+            try {
+                const response = await apiCall(`/expenses/trip/${tripId}`);
+                if (response.ok) {
+                    const expenses = await response.json();
+                    
+                    if (expenses.length === 0) {
+                        listDiv.innerHTML = '<p>No hay gastos registrados para este viaje</p>';
+                        return;
+                    }
+
+                    let total = 0;
+                    let html = '';
+                    expenses.forEach(exp => {
+                        total += exp.amount;
+                        html += `
+                            <div class="expense-item">
+                                <div class="expense-info">
+                                    <div class="expense-type">${exp.expense_type}</div>
+                                    <div style="font-size: 12px; color: #666;">${exp.description || 'Sin descripción'}</div>
+                                    <div style="font-size: 12px; color: #999;">${exp.expense_date}</div>
+                                </div>
+                                <div class="expense-amount">$${exp.amount.toFixed(2)}</div>
+                            </div>
+                        `;
+                    });
+
+                    html += `
+                        <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid #667eea;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <strong style="font-size: 18px;">Total Gastos:</strong>
+                                <strong style="font-size: 24px; color: #dc3545;">$${total.toFixed(2)}</strong>
+                            </div>
+                        </div>
+                    `;
+
+                    listDiv.innerHTML = html;
+                } else {
+                    listDiv.innerHTML = '<p class="alert alert-error">Error al cargar gastos</p>';
+                }
+            } catch (error) {
+                listDiv.innerHTML = '<p class="alert alert-error">Error de conexión</p>';
+            }
+        }
+
+        // Set today's date as default
+        document.getElementById('tripStartDate').value = new Date().toISOString().split('T')[0];
+    </script>
+</body>
+</html>

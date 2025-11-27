@@ -40,9 +40,19 @@ def seed_all_data():
         
         # 1. Crear Usuarios y Conductores
         print("👤 Creando usuarios y conductores...")
+        from app import bcrypt
+        
+        # Hash de la contraseña por defecto: "123456"
+        password_hash = bcrypt.generate_password_hash("123456").decode('utf-8')
+        
         drivers_data = [
             {
-                'user': {'name': 'Juan', 'surname': 'Pérez', 'is_admin': False},
+                'user': {
+                    'name': 'Juan', 'surname': 'Pérez',
+                    'email': 'juan.perez@sgfcp.com',
+                    'password_hash': password_hash,
+                    'is_admin': False
+                },
                 'driver': {
                     'dni': 12345678, 'cuil': '20123456789',
                     'phone_number': '+54 9 11 1234-5678',
@@ -55,7 +65,12 @@ def seed_all_data():
                 }
             },
             {
-                'user': {'name': 'María', 'surname': 'González', 'is_admin': False},
+                'user': {
+                    'name': 'María', 'surname': 'González',
+                    'email': 'maria.gonzalez@sgfcp.com',
+                    'password_hash': password_hash,
+                    'is_admin': False
+                },
                 'driver': {
                     'dni': 23456789, 'cuil': '27234567890',
                     'phone_number': '+54 9 11 2345-6789',
@@ -68,7 +83,12 @@ def seed_all_data():
                 }
             },
             {
-                'user': {'name': 'Carlos', 'surname': 'Rodríguez', 'is_admin': False},
+                'user': {
+                    'name': 'Carlos', 'surname': 'Rodríguez',
+                    'email': 'carlos.rodriguez@sgfcp.com',
+                    'password_hash': password_hash,
+                    'is_admin': False
+                },
                 'driver': {
                     'dni': 34567890, 'cuil': '20345678901',
                     'phone_number': '+54 9 11 3456-7890',
@@ -92,7 +112,13 @@ def seed_all_data():
             created_counts['drivers'] += 1
         
         # Agregar un admin
-        admin = AppUser(name='Admin', surname='Sistema', is_admin=True)
+        admin = AppUser(
+            name='Admin',
+            surname='Sistema',
+            email='admin@sgfcp.com',
+            password_hash=password_hash,
+            is_admin=True
+        )
         db.session.add(admin)
         created_counts['users'] += 1
         
@@ -243,7 +269,15 @@ def seed_all_data():
         print(f"  - {created_counts['load_owners']} dueños de carga")
         print(f"  - {created_counts['km_rates']} tarifas por km")
         print(f"  - {created_counts['commission_percentages']} porcentajes de comisión")
+        print("\n🔐 Credenciales de prueba (contraseña: 123456):")
+        print("  - Admin: admin@sgfcp.com")
+        print("  - Chofer 1: juan.perez@sgfcp.com")
+        print("  - Chofer 2: maria.gonzalez@sgfcp.com")
+        print("  - Chofer 3: carlos.rodriguez@sgfcp.com")
         print("\n🌐 Inicia el servidor y prueba los endpoints:")
+        print("  - POST http://localhost:5000/auth/login")
+        print("  - POST http://localhost:5000/auth/register")
+        print("  - GET  http://localhost:5000/auth/me (requiere token)")
         print("  - http://localhost:5000/trucks/")
         print("  - http://localhost:5000/clients/")
         print("  - http://localhost:5000/drivers/")

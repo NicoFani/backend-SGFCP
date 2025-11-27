@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SGFCP - API Testing Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fa;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .navbar h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .navbar .user-info {
+            font-size: 14px;
+            opacity: 0.9;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .navbar .user-info .token-status {
+            background: rgba(255,255,255,0.2);
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+
+        .navbar .user-info button {
+            background: #ff4757;
+            border: none;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+
+        .login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .login-box {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .login-box h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .endpoints-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .endpoint-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .endpoint-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+        }
+
+        .endpoint-card h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .method-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+
+        .method-get { background: #28a745; color: white; }
+        .method-post { background: #007bff; color: white; }
+        .method-put { background: #ffc107; color: #333; }
+        .method-delete { background: #dc3545; color: white; }
+
+        .endpoint-path {
+            font-family: 'Courier New', monospace;
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 5px;
+            font-size: 12px;
+            margin-bottom: 15px;
+            word-break: break-all;
+        }
+
+        .form-group {
+            margin-bottom: 12px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 13px;
+        }
+
+        .form-group textarea {
+            min-height: 80px;
+            font-family: 'Courier New', monospace;
+            resize: vertical;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .response-container {
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 5px;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .response-success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .response-error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .response-container pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: 'Courier New', monospace;
+            margin-top: 8px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+
+        .status-2xx { background: #28a745; color: white; }
+        .status-4xx { background: #ffc107; color: #333; }
+        .status-5xx { background: #dc3545; color: white; }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            color: #666;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tab:hover {
+            color: #667eea;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .quick-actions {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+
+        .quick-actions h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .quick-actions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+
+        .quick-btn {
+            padding: 12px;
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            font-size: 13px;
+        }
+
+        .quick-btn:hover {
+            background: #e9ecef;
+            border-color: #667eea;
+            color: #667eea;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.6s linear infinite;
+            margin-left: 8px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .hidden { display: none !important; }
+
+        .json-input-helper {
+            font-size: 11px;
+            color: #888;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Overlay -->
+    <div id="loginOverlay" class="login-overlay">
+        <div class="login-box">
+            <h2>🔐 Iniciar Sesión</h2>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label>Email:</label>
+                    <input type="email" id="loginEmail" value="admin@sgfcp.com" required>
+                </div>
+                <div class="form-group">
+                    <label>Contraseña:</label>
+                    <input type="password" id="loginPassword" value="123456" required>
+                </div>
+                <button type="submit" class="btn-primary">Iniciar Sesión</button>
+            </form>
+            <div id="loginError" class="response-container response-error hidden"></div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="mainApp" class="hidden">
+        <nav class="navbar">
+            <h1>🚛 SGFCP - API Testing Dashboard</h1>
+            <div class="user-info">
+                <span id="userDisplay"></span>
+                <span class="token-status">Token válido</span>
+                <button onclick="logout()">Cerrar Sesión</button>
+            </div>
+        </nav>
+
+        <div class="container">
+            <!-- Tabs -->
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('auth')">🔐 Autenticación</button>
+                <button class="tab" onclick="switchTab('drivers')">🚗 Conductores</button>
+                <button class="tab" onclick="switchTab('trucks')">🚛 Camiones</button>
+                <button class="tab" onclick="switchTab('trips')">🗺️ Viajes</button>
+                <button class="tab" onclick="switchTab('expenses')">💰 Gastos</button>
+                <button class="tab" onclick="switchTab('others')">📋 Otros</button>
+            </div>
+
+            <!-- Auth Tab -->
+            <div id="auth-tab" class="tab-content active">
+                <div class="quick-actions">
+                    <h3>Acciones Rápidas</h3>
+                    <div class="quick-actions-grid">
+                        <button class="quick-btn" onclick="testGetMe()">🔍 Ver mi perfil</button>
+                        <button class="quick-btn" onclick="testRegister()">📝 Registrar usuario</button>
+                        <button class="quick-btn" onclick="testRefreshToken()">🔄 Renovar token</button>
+                    </div>
+                </div>
+
+                <div class="endpoints-grid">
+                    <!-- Get Current User -->
+                    <div class="endpoint-card">
+                        <h3>👤 Usuario Actual</h3>
+                        <div class="endpoint-path">
+                            <span class="method-badge method-get">GET</span>/auth/me
+                        </div>
+                        <button class="btn-primary" onclick="makeRequest('GET', '/auth/me', null, 'authMeResponse')">
+                            Ejecutar
+                        </button>
+                        <div id="authMeResponse"></div>
+                    </div>
+
+                    <!-- Register User -->
+                    <div class="endpoint-card">
+                        <h3>📝 Registrar Usuario</h3>
+                        <div class="endpoint-path">
+                            <span class="method-badge method-post">POST</span>/auth/register
+                        </div>
+                        <div class="form-group">
+                            <label>Nombre:</label>
+                            <input type="text" id="regName" value="Test">
+                        </div>
+                        <div class="form-group">
+                            <label>Apellido:</label>
+                            <input type="text" id="regSurname" value="Usuario">
+                        </div>
+                        <div class="form-group">
+                            <label>Email:</label>
+                            <input type="email" id="regEmail" value="test@example.com">
+                        </div>
+                        <div class="form-group">
+                            <label>Contraseña:</label>
+                            <input type="password" id="regPassword" value="123456">
+                        </div>
+                        <div class="form-group">
+                            <label>¿Es Admin?</label>
+                            <select id="regIsAdmin">
+                                <option value="false">No</option>
+                                <option value="true">Sí</option>
+                            </select>
+                        </div>
+                        <button class="btn-primary" onclick="registerUser()">
+                            Registrar
+                        </button>
+                        <div id="registerResponse"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Drivers Tab -->
+            <div id="drivers-tab" class="tab-content">
+                <div class="quick-actions">
+                    <h3>Acciones Rápidas</h3>
+                    <div class="quick-actions-grid">
+                        <button class="quick-btn" onclick="makeRequest('GET', '/drivers/', null, 'quickDriversResponse')">📋 Listar todos</button>
+                        <button class="quick-btn" onclick="makeRequest('GET', '/drivers/1', null, 'quickDriversResponse')">🔍 Ver conductor #1</button>
+                    </div>
+                    <div id="quickDriversResponse"></div>
+                </div>
+
+                <div class="endpoints-grid">
+                    <!-- Get All Drivers -->
+                    <div class="endpoint-card">
+                        <h3>📋 Listar Conductores</h3>
+                        <div class="endpoint-path">
+                            <span class="method-badge method-get">GET</span>/drivers/
+                        </div>
+                        <button class="btn-primary" onclick="makeRequest('GET', '/drivers/', null, 'driversListResponse')">
+                            Obtener Todos
+                        </button>
+                        <div id="driversListResponse"></div>
+                    </div>
+
+                    <!-- Get Driver by ID -->
+                    <div class="endpoint-card">
+                        <h3>🔍 Obtener Conductor</h3>
+                        <div class="endpoint-path">
+                            <span class="method-badge method-get">GET</span>/drivers/{id}
+                        </div>
+                        <div class="form-group">
+                            <label>ID del Conductor:</label>
+                            <input type="number" id="driverGetId" value="1">
+                        </div>
+                        <button class="btn-primary" onclick="getDriver()">
+                            Obtener
+                        </button>
+                        <div id="driverGetResponse"></div>
+                    </div>
+
+                    <!-- Create Driver -->
+                    <div class="endpoint-card">
+                        <h3>➕ Crear Conductor</h3>
+                        <div class="endpoint-path">
+                            <span class="method-badge method-post">POST</span>/drivers/
+                        </div>
+                        <div class="form-group">
+                            <label>JSON Body:</label>
+                            <textarea id="driverCreateBody">
+{
+  "name": "Nuevo",
+  "surname": "Conductor",
+  "is_admin": false,
+  "dni": 99999999,
+  "cuil": "20999999999",
+  "phone_number": "+54 9 11 9999-9999",
+  "cbu": "0170009999999999999999",
+  "active": true,
+  "commission": 15.0,
+  "enrollment_date": "2025-01-01"
+}</textarea>
+                        </div>
+                        <button class="btn-primary" onclick="createDriver()">
+                            Crear
+                        </button>
+                        <div id="driverCreateResponse"></div>
+                    </div>
+
+                    <!-- Update Driver -->
+                    <div class="endpoint-card">
+                        <h3>✏️ Actualizar Conductor</h3>
+                        <div class="endpoint-path">
+                            <span class="method-badge method-put">PUT</span>/drivers/{id}
+                        </div>
+                        <div class="form-group">
+                            <label>ID del Conductor:</label>
+                            <input type="number" id="driverUpdateId" value="1">
+                        </div>
+                        <div class="form-group">
+                            <label>JSON Body:</label>
+                            <textarea id="driverUpdateBody">
+{
+  "commission": 20.0,
+  "phone_number": "+54 9 11 1111-1111"
+}</textarea>
+                        </div>
+                        <button class="btn-primary" onclick="updateDriver()">
+                            Actualizar
+                        </button>
+                        <div id="driverUpdateResponse"></div>
+                    </div>
+
+                    <!-- Delete Driver -->
+                    <div class="endpoint-card">
+                        <h3>🗑️ Eliminar Conductor</h3>
+                        <div class="endpoint-path">
+                            <span class="method-badge method-delete">DELETE</span>/drivers/{id}
+                        </div>
+                        <div class="form-group">
+                            <label>ID del Conductor:</label>
+                            <input type="number" id="driverDeleteId" value="">
+                        </div>
+                        <button class="btn-primary" onclick="deleteDriver()">
+                            Eliminar
+                        </button>
+                        <div id="driverDeleteResponse"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trucks Tab -->
+            <div id="trucks-tab" class="tab-content">
+                <div class="quick-actions">
+                    <h3>Acciones Rápidas</h3>
+                    <div class="quick-actions-grid">
+                        <button class="quick-btn" onclick="makeRequest('GET', '/trucks/', null, 'quickTrucksResponse')">📋 Listar todos</button>
+                        <button class="quick-btn" onclick="makeRequest('GET', '/trucks/1', null, 'quickTrucksResponse')">🔍 Ver camión #1</button>
+                    </div>
+                    <div id="quickTrucksResponse"></div>
+                </div>
+
+                <div class="endpoints-grid">
+                    <!-- Get All Trucks -->
+                    <div class="endpoint-card">
+                        <h3>📋 Listar Camiones</h3>
+                        <div class="endpoint-path">
+                            <span class="method-badge method-get">GET</span>/trucks/
+                        </div>
+                        <button class="btn-primary" onclick="makeRequest('GET', '/trucks/', null, 'trucksListResponse')">
+                            Obtener Todos
+                        </button>
+                        <div id="trucksListResponse"></div>
+                    </div>
+
+                    <!-- Get Truck by ID -->
+                    <div class="endpoint-card">
+                        <h3>🔍 Obtener Camión</h3>
+                        <div class="endpoint-path">
+                            <span class="method-badge method-get">GET</span>/trucks/{id}
+                        </div>
+                        <div class="form-group">
+                            <label>ID del Camión:</label>
+                            <input type="number" id="truckGetId" value="1">
+                        </div>
+                        <button class="btn-primary" onclick="getTruck()">
+                            Obtener
+                        </button>
+                        <div id="truckGetResponse"></div>
+                    </div>
+
+                    <!-- Create Truck -->
+                    <div class="endpoint-card">
+                        <h3>➕ Crear Camión</h3>
+                        <div class="endpoint-path">
+                            <span class="method-badge method-post">POST</span>/trucks/
+                        </div>
+                        <div class="form-group">
+                            <label>JSON Body:</label>
+                            <textarea id="truckCreateBody">
+{
+  "plate": "XY999ZZ",
+  "operational": true,
+  "brand": "Mercedes-Benz",
+  "model_name": "Actros 2651",
+  "fabrication_year": 2024
+}</textarea>
+                        </div>
+                        <button class="btn-primary" onclick="createTruck()">
+                            Crear
+                        </button>
+                        <div id="truckCreateResponse"></div>
+                    </div>
+
+                    <!-- Update Truck -->
+                    <div class="endpoint-card">
+                        <h3>✏️ Actualizar Camión</h3>
+                        <div class="endpoint-path">
+                            <span class="method-badge method-put">PUT</span>/trucks/{id}
+                        </div>
+                        <div class="form-group">
+                            <label>ID del Camión:</label>
+                            <input type="number" id="truckUpdateId" value="1">
+                        </div>
+                        <div class="form-group">
+                            <label>JSON Body:</label>
+                            <textarea id="truckUpdateBody">
+{
+  "operational": false
+}</textarea>
+                        </div>
+                        <button class="btn-primary" onclick="updateTruck()">
+                            Actualizar
+                        </button>
+                        <div id="truckUpdateResponse"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trips Tab -->
+            <div id="trips-tab" class="tab-content">
+                <div class="quick-actions">
+                    <h3>Acciones Rápidas</h3>
+                    <div class="quick-actions-grid">
+                        <button class="quick-btn" onclick="makeRequest('GET', '/trips/', null, 'quickTripsResponse')">📋 Listar todos</button>
+                        <button class="quick-btn" onclick="makeRequest('GET', '/trips/1', null, 'quickTripsResponse')">🔍 Ver viaje #1</button>
+                    </div>
+                    <div id="quickTripsResponse"></div>
+                </div>
+
+                <div class="endpoints-grid">
+                    <!-- Get All Trips -->
+                    <div class="endpoint-card">
+                        <h3>📋 Listar Viajes</h3>
+                        <div class="endpoint-path">
+                            <span class="method-badge method-get">GET</span>/trips/
+                        </div>
+                        <button class="btn-primary" onclick="makeRequest('GET', '/trips/', null, 'tripsListResponse')">
+                            Obtener Todos
+                        </button>
+                        <div id="tripsListResponse"></div>
+                    </div>
+
+                    <!-- Get Trip by ID -->
+                    <div class="endpoint-card">
+                        <h3>🔍 Obtener Viaje</h3>
+                        <div class="endpoint-path">
+                            <span class="method-badge method-get">GET</span>/trips/{id}
+                        </div>
+                        <div class="form-group">
+                            <label>ID del Viaje:</label>
+                            <input type="number" id="tripGetId" value="1">
+                        </div>
+                        <button class="btn-primary" onclick="getTrip()">
+                            Obtener
+                        </button>
+                        <div id="tripGetResponse"></div>
+                    </div>
+
+                    <!-- Create Trip -->
+                    <div class="endpoint-card">
+                        <h3>➕ Crear Viaje</h3>
+                        <div class="endpoint-path">
+                            <span class="method-badge method-post">POST</span>/trips/
+                        </div>
+                        <div class="form-group">
+                            <label>JSON Body:</label>
+                            <textarea id="tripCreateBody">
+{
+  "driver_id": 1,
+  "truck_id": 1,
+  "client_id": 1,
+  "load_owner_id": 1,
+  "km_rate_id": 1,
+  "origin": "Buenos Aires",
+  "destination": "Rosario",
+  "distance": 300,
+  "toll": 5000,
+  "toll_paid_by": "Administrador",
+  "trip_date": "2025-11-26",
+  "state": "Pendiente"
+}</textarea>
+                        </div>
+                        <button class="btn-primary" onclick="createTrip()">
+                            Crear
+                        </button>
+                        <div id="tripCreateResponse"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Expenses Tab -->
+            <div id="expenses-tab" class="tab-content">
+                <div class="quick-actions">
+                    <h3>Acciones Rápidas</h3>
+                    <div class="quick-actions-grid">
+                        <button class="quick-btn" onclick="makeRequest('GET', '/expenses/', null, 'quickExpensesResponse')">📋 Listar todos</button>
+                        <button class="quick-btn" onclick="makeRequest('GET', '/expenses/1', null, 'quickExpensesResponse')">🔍 Ver gasto #1</button>
+                    </div>
+                    <div id="quickExpensesResponse"></div>
+                </div>
+
+                <div class="endpoints-grid">
+                    <!-- Get All Expenses -->
+                    <div class="endpoint-card">
+                        <h3>📋 Listar Gastos</h3>
+                        <div class="endpoint-path">
+                            <span class="method-badge method-get">GET</span>/expenses/
+                        </div>
+                        <button class="btn-primary" onclick="makeRequest('GET', '/expenses/', null, 'expensesListResponse')">
+                            Obtener Todos
+                        </button>
+                        <div id="expensesListResponse"></div>
+                    </div>
+
+                    <!-- Create Expense -->
+                    <div class="endpoint-card">
+                        <h3>➕ Crear Gasto</h3>
+                        <div class="endpoint-path">
+                            <span class="method-badge method-post">POST</span>/expenses/
+                        </div>
+                        <div class="form-group">
+                            <label>JSON Body:</label>
+                            <textarea id="expenseCreateBody">
+{
+  "trip_id": 1,
+  "expense_type": "Combustible",
+  "amount": 50000,
+  "description": "Carga completa de combustible",
+  "expense_date": "2025-11-26"
+}</textarea>
+                            <div class="json-input-helper">
+                                Tipos: Combustible, Peaje, Viáticos, Multa, Reparaciones
+                            </div>
+                        </div>
+                        <button class="btn-primary" onclick="createExpense()">
+                            Crear
+                        </button>
+                        <div id="expenseCreateResponse"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Others Tab -->
+            <div id="others-tab" class="tab-content">
+                <div class="endpoints-grid">
+                    <!-- Clients -->
+                    <div class="endpoint-card">
+                        <h3>🏢 Clientes</h3>
+                        <div class="endpoint-path">
+                            <span class="method-badge method-get">GET</span>/clients/
+                        </div>
+                        <button class="btn-primary" onclick="makeRequest('GET', '/clients/', null, 'clientsResponse')">
+                            Obtener Todos
+                        </button>
+                        <div id="clientsResponse"></div>
+                    </div>
+
+                    <!-- Load Owners -->
+                    <div class="endpoint-card">
+                        <h3>📦 Dueños de Carga</h3>
+                        <div class="endpoint-path">
+                            <span class="method-badge method-get">GET</span>/load-owners/
+                        </div>
+                        <button class="btn-primary" onclick="makeRequest('GET', '/load-owners/', null, 'loadOwnersResponse')">
+                            Obtener Todos
+                        </button>
+                        <div id="loadOwnersResponse"></div>
+                    </div>
+
+                    <!-- KM Rates -->
+                    <div class="endpoint-card">
+                        <h3>📏 Tarifas por KM</h3>
+                        <div class="endpoint-path">
+                            <span class="method-badge method-get">GET</span>/km-rates/
+                        </div>
+                        <button class="btn-primary" onclick="makeRequest('GET', '/km-rates/', null, 'kmRatesResponse')">
+                            Obtener Todas
+                        </button>
+                        <div id="kmRatesResponse"></div>
+                    </div>
+
+                    <!-- Commission Percentages -->
+                    <div class="endpoint-card">
+                        <h3>💰 Porcentajes de Comisión</h3>
+                        <div class="endpoint-path">
+                            <span class="method-badge method-get">GET</span>/commission-percentages/
+                        </div>
+                        <button class="btn-primary" onclick="makeRequest('GET', '/commission-percentages/', null, 'commissionResponse')">
+                            Obtener Todos
+                        </button>
+                        <div id="commissionResponse"></div>
+                    </div>
+
+                    <!-- Advance Payments -->
+                    <div class="endpoint-card">
+                        <h3>💵 Anticipos</h3>
+                        <div class="endpoint-path">
+                            <span class="method-badge method-get">GET</span>/advance-payments/
+                        </div>
+                        <button class="btn-primary" onclick="makeRequest('GET', '/advance-payments/', null, 'advancePaymentsResponse')">
+                            Obtener Todos
+                        </button>
+                        <div id="advancePaymentsResponse"></div>
+                    </div>
+
+                    <!-- Monthly Summaries -->
+                    <div class="endpoint-card">
+                        <h3>📊 Resúmenes Mensuales</h3>
+                        <div class="endpoint-path">
+                            <span class="method-badge method-get">GET</span>/monthly-summaries/
+                        </div>
+                        <button class="btn-primary" onclick="makeRequest('GET', '/monthly-summaries/', null, 'summariesResponse')">
+                            Obtener Todos
+                        </button>
+                        <div id="summariesResponse"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000';
+        let authToken = null;
+        let currentUser = null;
+
+        // Login
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const errorDiv = document.getElementById('loginError');
+
+            try {
+                const response = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    authToken = data.access_token;
+                    currentUser = data.user;
+                    document.getElementById('loginOverlay').classList.add('hidden');
+                    document.getElementById('mainApp').classList.remove('hidden');
+                    document.getElementById('userDisplay').textContent = 
+                        `${currentUser.name} ${currentUser.surname} (${currentUser.is_admin ? 'Admin' : 'Usuario'})`;
+                } else {
+                    errorDiv.textContent = data.error || 'Error al iniciar sesión';
+                    errorDiv.classList.remove('hidden');
+                }
+            } catch (error) {
+                errorDiv.textContent = 'Error de conexión. Asegúrate de que el servidor esté corriendo.';
+                errorDiv.classList.remove('hidden');
+            }
+        });
+
+        function logout() {
+            authToken = null;
+            currentUser = null;
+            document.getElementById('loginOverlay').classList.remove('hidden');
+            document.getElementById('mainApp').classList.add('hidden');
+            document.getElementById('loginPassword').value = '';
+        }
+
+        function switchTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+        }
+
+        async function makeRequest(method, endpoint, body, responseId) {
+            const responseDiv = document.getElementById(responseId);
+            responseDiv.innerHTML = '<div class="response-container response-success">Procesando...<span class="spinner"></span></div>';
+
+            const options = {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`
+                }
+            };
+
+            if (body) {
+                options.body = JSON.stringify(body);
+            }
+
+            try {
+                const response = await fetch(`${API_URL}${endpoint}`, options);
+                const data = await response.json();
+
+                const statusClass = response.status >= 200 && response.status < 300 ? 'status-2xx' : 
+                                  response.status >= 400 && response.status < 500 ? 'status-4xx' : 'status-5xx';
+                
+                const responseClass = response.ok ? 'response-success' : 'response-error';
+
+                responseDiv.innerHTML = `
+                    <div class="response-container ${responseClass}">
+                        <span class="status-badge ${statusClass}">${response.status}</span>
+                        <strong>${response.ok ? '✅ Éxito' : '❌ Error'}</strong>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                responseDiv.innerHTML = `
+                    <div class="response-container response-error">
+                        <strong>❌ Error de conexión</strong>
+                        <pre>${error.message}</pre>
+                    </div>
+                `;
+            }
+        }
+
+        // Auth functions
+        function testGetMe() {
+            makeRequest('GET', '/auth/me', null, 'quickDriversResponse');
+        }
+
+        function registerUser() {
+            const body = {
+                name: document.getElementById('regName').value,
+                surname: document.getElementById('regSurname').value,
+                email: document.getElementById('regEmail').value,
+                password: document.getElementById('regPassword').value,
+                is_admin: document.getElementById('regIsAdmin').value === 'true'
+            };
+            makeRequest('POST', '/auth/register', body, 'registerResponse');
+        }
+
+        // Driver functions
+        function getDriver() {
+            const id = document.getElementById('driverGetId').value;
+            makeRequest('GET', `/drivers/${id}`, null, 'driverGetResponse');
+        }
+
+        function createDriver() {
+            try {
+                const body = JSON.parse(document.getElementById('driverCreateBody').value);
+                makeRequest('POST', '/drivers/', body, 'driverCreateResponse');
+            } catch (e) {
+                document.getElementById('driverCreateResponse').innerHTML = 
+                    '<div class="response-container response-error">Error: JSON inválido</div>';
+            }
+        }
+
+        function updateDriver() {
+            const id = document.getElementById('driverUpdateId').value;
+            try {
+                const body = JSON.parse(document.getElementById('driverUpdateBody').value);
+                makeRequest('PUT', `/drivers/${id}`, body, 'driverUpdateResponse');
+            } catch (e) {
+                document.getElementById('driverUpdateResponse').innerHTML = 
+                    '<div class="response-container response-error">Error: JSON inválido</div>';
+            }
+        }
+
+        function deleteDriver() {
+            const id = document.getElementById('driverDeleteId').value;
+            if (confirm(`¿Estás seguro de eliminar el conductor #${id}?`)) {
+                makeRequest('DELETE', `/drivers/${id}`, null, 'driverDeleteResponse');
+            }
+        }
+
+        // Truck functions
+        function getTruck() {
+            const id = document.getElementById('truckGetId').value;
+            makeRequest('GET', `/trucks/${id}`, null, 'truckGetResponse');
+        }
+
+        function createTruck() {
+            try {
+                const body = JSON.parse(document.getElementById('truckCreateBody').value);
+                makeRequest('POST', '/trucks/', body, 'truckCreateResponse');
+            } catch (e) {
+                document.getElementById('truckCreateResponse').innerHTML = 
+                    '<div class="response-container response-error">Error: JSON inválido</div>';
+            }
+        }
+
+        function updateTruck() {
+            const id = document.getElementById('truckUpdateId').value;
+            try {
+                const body = JSON.parse(document.getElementById('truckUpdateBody').value);
+                makeRequest('PUT', `/trucks/${id}`, body, 'truckUpdateResponse');
+            } catch (e) {
+                document.getElementById('truckUpdateResponse').innerHTML = 
+                    '<div class="response-container response-error">Error: JSON inválido</div>';
+            }
+        }
+
+        // Trip functions
+        function getTrip() {
+            const id = document.getElementById('tripGetId').value;
+            makeRequest('GET', `/trips/${id}`, null, 'tripGetResponse');
+        }
+
+        function createTrip() {
+            try {
+                const body = JSON.parse(document.getElementById('tripCreateBody').value);
+                makeRequest('POST', '/trips/', body, 'tripCreateResponse');
+            } catch (e) {
+                document.getElementById('tripCreateResponse').innerHTML = 
+                    '<div class="response-container response-error">Error: JSON inválido</div>';
+            }
+        }
+
+        // Expense functions
+        function createExpense() {
+            try {
+                const body = JSON.parse(document.getElementById('expenseCreateBody').value);
+                makeRequest('POST', '/expenses/', body, 'expenseCreateResponse');
+            } catch (e) {
+                document.getElementById('expenseCreateResponse').innerHTML = 
+                    '<div class="response-container response-error">Error: JSON inválido</div>';
+            }
+        }
+    </script>
+</body>
+</html>
