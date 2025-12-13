@@ -15,7 +15,18 @@ def create_app():
     
     # Initialize extensions
     db.init_app(app)
-    CORS(app)
+    
+    # Configurar CORS para permitir solicitudes desde el frontend
+    CORS(app, resources={
+        r"/*": {
+            "origins": "*",
+            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+            "allow_headers": ["Content-Type", "Authorization"],
+            "supports_credentials": False,
+            "max_age": 3600
+        }
+    })
+    
     bcrypt.init_app(app)
     jwt.init_app(app)
     
