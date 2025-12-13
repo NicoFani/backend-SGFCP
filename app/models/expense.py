@@ -3,7 +3,8 @@ from .base import db, expense_type_enum, toll_type_enum, toll_paid_by_enum
 class Expense(db.Model):
     __tablename__ = 'expense'
     id = db.Column(db.Integer, primary_key=True)
-    trip_id = db.Column(db.Integer, db.ForeignKey('trip.id', ondelete='CASCADE'))
+    trip_id = db.Column(db.Integer, db.ForeignKey('trip.id', ondelete='SET NULL'), nullable=True)
+    driver_id = db.Column(db.Integer, db.ForeignKey('driver.id', ondelete='CASCADE'), nullable=False)
     expense_type = db.Column(expense_type_enum, nullable=False)
     date = db.Column(db.Date, nullable=False)
     amount = db.Column(db.Float, nullable=False)
@@ -14,11 +15,13 @@ class Expense(db.Model):
     fuel_liters = db.Column(db.Float)
     toll_type = db.Column(toll_type_enum)
     toll_paid_by = db.Column(toll_paid_by_enum)
+    toll_port_fee_name = db.Column(db.String(75))
 
     def to_dict(self):
         return {
             'id': self.id,
             'trip_id': self.trip_id,
+            'driver_id': self.driver_id,
             'expense_type': self.expense_type,
             'date': self.date.isoformat() if self.date else None,
             'amount': self.amount,
@@ -28,5 +31,6 @@ class Expense(db.Model):
             'repair_type': self.repair_type,
             'fuel_liters': self.fuel_liters,
             'toll_type': self.toll_type,
-            'toll_paid_by': self.toll_paid_by
+            'toll_paid_by': self.toll_paid_by,
+            'toll_port_fee_name': self.toll_port_fee_name
         }

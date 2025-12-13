@@ -18,7 +18,6 @@ class Driver(db.Model):
     user = db.relationship('AppUser', backref='driver_profile', lazy=True, foreign_keys=[id])
     advance_payments = db.relationship('AdvancePayment', backref='driver', lazy=True, foreign_keys='AdvancePayment.driver_id')
     driver_trucks = db.relationship('DriverTruck', backref='driver', lazy=True)
-    trips = db.relationship('Trip', backref='driver', lazy=True)
     monthly_summaries = db.relationship('MonthlySummary', backref='driver', lazy=True)
 
     def to_dict(self):

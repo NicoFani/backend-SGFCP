@@ -411,6 +411,15 @@
             font-size: 20px;
             margin-bottom: 10px;
         }
+
+        #driversMultiSelect label {
+            font-weight: normal;
+        }
+
+        #driversMultiSelect input[type="checkbox"] {
+            width: auto;
+            margin: 0;
+        }
     </style>
 </head>
 <body>
@@ -474,8 +483,18 @@
                                 <input type="text" id="tripOrigin" required>
                             </div>
                             <div class="form-group">
+                                <label>Descripción Origen</label>
+                                <input type="text" id="tripOriginDesc">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
                                 <label>Destino *</label>
                                 <input type="text" id="tripDestination" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Descripción Destino</label>
+                                <input type="text" id="tripDestinationDesc">
                             </div>
                         </div>
                         <div class="form-row">
@@ -484,34 +503,16 @@
                                 <input type="date" id="tripStartDate" required>
                             </div>
                             <div class="form-group">
-                                <label>Conductor *</label>
-                                <select id="tripDriver" required>
-                                    <option value="">Seleccionar...</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
                                 <label>Cliente *</label>
                                 <select id="tripClient" required>
                                     <option value="">Seleccionar...</option>
                                 </select>
                             </div>
-                            <div class="form-group">
-                                <label>Dueño de Carga</label>
-                                <select id="tripLoadOwner">
-                                    <option value="">Seleccionar...</option>
-                                </select>
-                            </div>
                         </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Kilómetros Estimados</label>
-                                <input type="number" id="tripKms" step="0.1">
-                            </div>
-                            <div class="form-group">
-                                <label>Tarifa por Tonelada</label>
-                                <input type="number" id="tripRatePerTon" step="0.01">
+                        <div class="form-group">
+                            <label>Choferes Asignados *</label>
+                            <div id="driversMultiSelect" style="border: 1px solid #ddd; border-radius: 5px; padding: 10px; max-height: 150px; overflow-y: auto; background: #f9f9f9;">
+                                <!-- Se carga dinámicamente -->
                             </div>
                         </div>
                         <button type="submit" class="btn-primary">Crear Viaje</button>
@@ -531,19 +532,51 @@
             </div>
             <form id="startTripForm">
                 <input type="hidden" id="startTripId">
-                <div class="form-group">
-                    <label>Dueño de Carga *</label>
-                    <select id="startLoadOwner" required>
-                        <option value="">Seleccionar...</option>
-                    </select>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Tipo Documento *</label>
+                        <select id="startDocType" required onchange="updateDocumentValidation()">
+                            <option value="">Seleccionar...</option>
+                            <option value="CTG">CTG</option>
+                            <option value="Remito">Remito</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label id="docNumberLabel">Número Documento *</label>
+                        <input type="text" id="startDocNumber" required placeholder="Ej: 12345678901">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Dador de Carga</label>
+                        <select id="startLoadOwner">
+                            <option value="">Seleccionar...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Kilómetros a Recorrer</label>
+                        <input type="number" id="startEstimatedKms" step="0.1">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Peso de Carga (kg)</label>
+                        <input type="number" id="startLoadWeight" step="0.1">
+                    </div>
+                    <div class="form-group">
+                        <label>Tarifa por Tonelada</label>
+                        <input type="number" id="startRatePerTon" step="0.01">
+                    </div>
                 </div>
                 <div class="form-group">
-                    <label>Tarifa por Tonelada</label>
-                    <input type="number" id="startRatePerTon" step="0.01">
+                    <label>
+                        <input type="checkbox" id="startFuelOn" onchange="toggleFuelLiters()">
+                        Vale de Combustible entregado por el cliente
+                    </label>
                 </div>
-                <div class="form-group">
-                    <label>Peso de Carga (kg)</label>
-                    <input type="number" id="startLoadWeight" step="0.1">
+                <div class="form-group hidden" id="fuelLitersGroup">
+                    <label>Litros del Vale</label>
+                    <input type="number" id="startFuelLiters" step="0.1">
                 </div>
                 <button type="submit" class="btn-primary">Iniciar Viaje</button>
             </form>
@@ -583,9 +616,12 @@
             </div>
             <form id="addExpenseForm">
                 <input type="hidden" id="expenseTripId">
+                <input type="hidden" id="expenseDriverId">
+                
+                <!-- Tipo de Gasto -->
                 <div class="form-group">
                     <label>Tipo de Gasto *</label>
-                    <select id="expenseType" required>
+                    <select id="expenseType" required onchange="updateExpenseFields()">
                         <option value="">Seleccionar...</option>
                         <option value="Viáticos">Viáticos</option>
                         <option value="Multa">Multa</option>
@@ -594,18 +630,77 @@
                         <option value="Peaje">Peaje</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label>Monto *</label>
-                    <input type="number" id="expenseAmount" step="0.01" required>
-                </div>
-                <div class="form-group">
-                    <label>Descripción</label>
-                    <textarea id="expenseDescription" rows="3"></textarea>
-                </div>
+
+                <!-- Campos comunes: Fecha y Monto -->
                 <div class="form-group">
                     <label>Fecha *</label>
                     <input type="date" id="expenseDate" required>
                 </div>
+                <div class="form-group">
+                    <label>Monto *</label>
+                    <input type="number" id="expenseAmount" step="0.01" required>
+                </div>
+
+                <!-- Multa: Municipio -->
+                <div class="form-group" id="field-municipality" style="display:none;">
+                    <label>Municipio *</label>
+                    <input type="text" id="expenseMunicipality" placeholder="Ej: La Plata">
+                </div>
+
+                <!-- Reparaciones: Tipo de Reparación -->
+                <div class="form-group" id="field-repair-type" style="display:none;">
+                    <label>Tipo de Reparación *</label>
+                    <select id="expenseRepairType">
+                        <option value="">Seleccionar...</option>
+                        <option value="Pinchar una rueda">Pinchar una rueda</option>
+                        <option value="Chapería">Chapería</option>
+                        <option value="Cambio de aceite">Cambio de aceite</option>
+                        <option value="Reparación del motor">Reparación del motor</option>
+                        <option value="Otro">Otro</option>
+                    </select>
+                </div>
+
+                <!-- Combustible: Litros -->
+                <div class="form-group" id="field-fuel-liters" style="display:none;">
+                    <label>Litros Cargados *</label>
+                    <input type="number" id="expenseFuelLiters" step="0.1" placeholder="Ej: 50.5">
+                </div>
+
+                <!-- Peaje: Tipo de Peaje, Tasa Portuaria, Quién Pagó -->
+                <div class="form-group" id="field-toll-type" style="display:none;">
+                    <label>Tipo de Peaje *</label>
+                    <select id="expenseTollType" onchange="updateTollFields()">
+                        <option value="">Seleccionar...</option>
+                        <option value="Peaje de ruta">Peaje de ruta</option>
+                        <option value="Tasa portuaria">Tasa portuaria</option>
+                        <option value="Derecho de Ingreso a establecimiento">Derecho de Ingreso a establecimiento</option>
+                    </select>
+                </div>
+
+                <!-- Peaje: Nombre de Tasa Portuaria (solo si selecciona Tasa portuaria) -->
+                <div class="form-group" id="field-toll-port-fee" style="display:none;">
+                    <label>Descripción de Tasa Portuaria *</label>
+                    <input type="text" id="expenseTollPortFeeName" placeholder="Ej: Acceso al puerto">
+                </div>
+
+                <!-- Peaje: Quién Pagó -->
+                <div class="form-group" id="field-toll-paid-by" style="display:none;">
+                    <label>¿Quién Pagó? *</label>
+                    <select id="expenseTollPaidBy">
+                        <option value="">Seleccionar...</option>
+                        <option value="Chofer">Chofer</option>
+                        <option value="Contador">Contador</option>
+                    </select>
+                </div>
+
+                <!-- Viaje (opcional, solo si admin o chofer puede asociar) -->
+                <div class="form-group" id="field-trip" style="display:none;">
+                    <label>Viaje (Opcional)</label>
+                    <select id="expenseAssocTrip">
+                        <option value="">Sin asociar a viaje</option>
+                    </select>
+                </div>
+
                 <button type="submit" class="btn-primary">Agregar Gasto</button>
             </form>
             <div id="addExpenseResult"></div>
@@ -705,12 +800,18 @@
                 const driversRes = await apiCall('/drivers/');
                 if (driversRes.ok) {
                     drivers = await driversRes.json();
-                    const select = document.getElementById('tripDriver');
+                    const selectDiv = document.getElementById('driversMultiSelect');
+                    selectDiv.innerHTML = '';
                     drivers.forEach(d => {
-                        const option = document.createElement('option');
-                        option.value = d.id;
-                        option.textContent = `${d.name} ${d.surname}`;
-                        select.appendChild(option);
+                        const checkbox = document.createElement('div');
+                        checkbox.style.marginBottom = '8px';
+                        checkbox.innerHTML = `
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                <input type="checkbox" class="driver-checkbox" value="${d.id}">
+                                ${d.name} ${d.surname}
+                            </label>
+                        `;
+                        selectDiv.appendChild(checkbox);
                     });
                 }
 
@@ -731,7 +832,7 @@
                 const loadOwnersRes = await apiCall('/load-owners/');
                 if (loadOwnersRes.ok) {
                     loadOwners = await loadOwnersRes.json();
-                    [document.getElementById('tripLoadOwner'), document.getElementById('startLoadOwner')].forEach(select => {
+                    [document.getElementById('startLoadOwner')].forEach(select => {
                         loadOwners.forEach(lo => {
                             const option = document.createElement('option');
                             option.value = lo.id;
@@ -798,6 +899,30 @@
                 actions = `<button class="btn-primary" onclick="viewExpenses(${trip.id})">📊 Ver Gastos</button>`;
             }
 
+            const driversText = trip.drivers && trip.drivers.length > 0 
+                ? trip.drivers.map(d => `${d.name} ${d.surname}`).join(', ')
+                : 'N/A';
+
+            let docInfo = '';
+            if (trip.document_type) {
+                docInfo = `
+                    <div class="trip-detail">
+                        <label>Documento:</label>
+                        <span>${trip.document_type} - ${trip.document_number}</span>
+                    </div>
+                `;
+            }
+
+            let fuelInfo = '';
+            if (trip.fuel_on_client) {
+                fuelInfo = `
+                    <div class="trip-detail">
+                        <label>Vale Combustible:</label>
+                        <span>${trip.fuel_liters || 0} L</span>
+                    </div>
+                `;
+            }
+
             div.innerHTML = `
                 <div class="trip-header">
                     <div class="trip-id">#${trip.id}</div>
@@ -806,11 +931,15 @@
                 <div class="trip-details">
                     <div class="trip-detail">
                         <label>Origen:</label>
-                        <span>${trip.origin}</span>
+                        <span>${trip.origin}${trip.origin_description ? ' - ' + trip.origin_description : ''}</span>
                     </div>
                     <div class="trip-detail">
                         <label>Destino:</label>
-                        <span>${trip.destination}</span>
+                        <span>${trip.destination}${trip.destination_description ? ' - ' + trip.destination_description : ''}</span>
+                    </div>
+                    <div class="trip-detail">
+                        <label>Choferes:</label>
+                        <span>${driversText}</span>
                     </div>
                     <div class="trip-detail">
                         <label>Fecha Inicio:</label>
@@ -820,6 +949,12 @@
                     <div class="trip-detail">
                         <label>Fecha Fin:</label>
                         <span>${trip.end_date}</span>
+                    </div>` : ''}
+                    ${docInfo}
+                    ${trip.estimated_kms ? `
+                    <div class="trip-detail">
+                        <label>Kms:</label>
+                        <span>${trip.estimated_kms}</span>
                     </div>` : ''}
                     ${trip.load_weight_on_load ? `
                     <div class="trip-detail">
@@ -831,6 +966,7 @@
                         <label>Peso Descarga:</label>
                         <span>${trip.load_weight_on_unload} kg</span>
                     </div>` : ''}
+                    ${fuelInfo}
                 </div>
                 <div class="trip-actions">
                     ${actions}
@@ -845,15 +981,23 @@
             e.preventDefault();
             const resultDiv = document.getElementById('createTripResult');
             
+            // Obtener choferes seleccionados
+            const selectedDrivers = Array.from(document.querySelectorAll('.driver-checkbox:checked'))
+                .map(cb => parseInt(cb.value));
+            
+            if (selectedDrivers.length === 0) {
+                resultDiv.innerHTML = '<p class="alert alert-error">Debes seleccionar al menos un chofer</p>';
+                return;
+            }
+            
             const data = {
                 origin: document.getElementById('tripOrigin').value,
+                origin_description: document.getElementById('tripOriginDesc').value || null,
                 destination: document.getElementById('tripDestination').value,
+                destination_description: document.getElementById('tripDestinationDesc').value || null,
                 start_date: document.getElementById('tripStartDate').value,
-                driver_id: parseInt(document.getElementById('tripDriver').value),
                 client_id: parseInt(document.getElementById('tripClient').value),
-                load_owner_id: parseInt(document.getElementById('tripLoadOwner').value) || null,
-                estimated_kms: parseFloat(document.getElementById('tripKms').value) || null,
-                rate_per_ton: parseFloat(document.getElementById('tripRatePerTon').value) || null,
+                drivers: selectedDrivers,
                 state_id: 'Pendiente'
             };
 
@@ -868,6 +1012,7 @@
                 if (response.ok) {
                     resultDiv.innerHTML = '<p class="alert alert-success">Viaje creado exitosamente!</p>';
                     document.getElementById('createTripForm').reset();
+                    document.getElementById('driversMultiSelect').querySelectorAll('input').forEach(cb => cb.checked = false);
                     await loadTrips();
                 } else {
                     resultDiv.innerHTML = `<p class="alert alert-error">${result.error || 'Error al crear viaje'}</p>`;
@@ -877,9 +1022,51 @@
             }
         });
 
-        function openStartTripModal(tripId) {
+        async function openStartTripModal(tripId) {
             document.getElementById('startTripId').value = tripId;
+            
+            // Mostrar modal primero para que sea visible
             document.getElementById('startTripModal').classList.add('show');
+            
+            // Cargar dadores de carga si no están cargados
+            const loadOwnerSelect = document.getElementById('startLoadOwner');
+            if (loadOwnerSelect.options.length <= 1) {  // Si solo está la opción "Seleccionar..."
+                try {
+                    console.log('Loading load owners from API...');
+                    const loadOwnersRes = await apiCall('/load-owners/');
+                    console.log('Load owners response status:', loadOwnersRes.status);
+                    
+                    if (loadOwnersRes.ok) {
+                        const loadOwnersList = await loadOwnersRes.json();
+                        console.log('Load owners received:', loadOwnersList);
+                        
+                        // Limpiar opciones previas excepto la primera
+                        while (loadOwnerSelect.options.length > 1) {
+                            loadOwnerSelect.removeChild(loadOwnerSelect.options[1]);
+                        }
+                        
+                        // Agregar nuevas opciones
+                        loadOwnersList.forEach(lo => {
+                            const option = document.createElement('option');
+                            option.value = lo.id;
+                            option.textContent = lo.name;
+                            loadOwnerSelect.appendChild(option);
+                            console.log('Added option:', lo.name);
+                        });
+                        console.log('Final options count:', loadOwnerSelect.options.length);
+                    } else {
+                        console.error('Failed to load load owners, status:', loadOwnersRes.status);
+                        const errorText = await loadOwnersRes.text();
+                        console.error('Error response:', errorText);
+                    }
+                } catch (error) {
+                    console.error('Error loading load owners:', error);
+                }
+            }
+            
+            // Limpiar el formulario
+            document.getElementById('startTripForm').reset();
+            document.getElementById('startTripResult').innerHTML = '';
         }
 
         function openEndTripModal(tripId) {
@@ -889,9 +1076,82 @@
         }
 
         function openAddExpenseModal(tripId) {
-            document.getElementById('expenseTripId').value = tripId;
+            document.getElementById('expenseTripId').value = tripId || '';
+            document.getElementById('expenseDriverId').value = currentUser.id;
             document.getElementById('expenseDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('expenseType').value = '';
+            document.getElementById('addExpenseResult').innerHTML = '';
+            
+            // Si es chofer y hay un tripId, solo mostrar ese viaje
+            if (tripId && !currentUser.is_admin) {
+                document.getElementById('field-trip').style.display = 'none';
+            } else {
+                // Si es admin, permitir seleccionar viaje
+                loadTripsForExpense();
+            }
+            
+            updateExpenseFields();
             document.getElementById('addExpenseModal').classList.add('show');
+        }
+
+        async function loadTripsForExpense() {
+            try {
+                const response = await apiCall('/trips/');
+                if (response.ok) {
+                    const trips = await response.json();
+                    const select = document.getElementById('expenseAssocTrip');
+                    select.innerHTML = '<option value="">Sin asociar a viaje</option>';
+                    trips.forEach(trip => {
+                        const option = document.createElement('option');
+                        option.value = trip.id;
+                        option.textContent = `Viaje #${trip.id} - ${trip.origin} → ${trip.destination}`;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading trips:', error);
+            }
+        }
+
+        function updateExpenseFields() {
+            const expenseType = document.getElementById('expenseType').value;
+            
+            // Ocultar todos los campos dinámicos
+            document.getElementById('field-municipality').style.display = 'none';
+            document.getElementById('field-repair-type').style.display = 'none';
+            document.getElementById('field-fuel-liters').style.display = 'none';
+            document.getElementById('field-toll-type').style.display = 'none';
+            document.getElementById('field-toll-port-fee').style.display = 'none';
+            document.getElementById('field-toll-paid-by').style.display = 'none';
+            
+            // Mostrar campos según el tipo de gasto
+            switch(expenseType) {
+                case 'Multa':
+                    document.getElementById('field-municipality').style.display = 'block';
+                    break;
+                case 'Reparaciones':
+                    document.getElementById('field-repair-type').style.display = 'block';
+                    break;
+                case 'Combustible':
+                    document.getElementById('field-fuel-liters').style.display = 'block';
+                    break;
+                case 'Peaje':
+                    document.getElementById('field-toll-type').style.display = 'block';
+                    document.getElementById('field-toll-paid-by').style.display = 'block';
+                    updateTollFields();
+                    break;
+            }
+        }
+
+        function updateTollFields() {
+            const tollType = document.getElementById('expenseTollType').value;
+            
+            // Mostrar campo de descripción solo si es "Tasa portuaria"
+            if (tollType === 'Tasa portuaria') {
+                document.getElementById('field-toll-port-fee').style.display = 'block';
+            } else {
+                document.getElementById('field-toll-port-fee').style.display = 'none';
+            }
         }
 
         function closeModal(modalId) {
@@ -906,9 +1166,14 @@
 
             const data = {
                 state_id: 'En curso',
+                document_type: document.getElementById('startDocType').value,
+                document_number: document.getElementById('startDocNumber').value,
+                estimated_kms: parseFloat(document.getElementById('startEstimatedKms').value) || null,
+                load_weight_on_load: parseFloat(document.getElementById('startLoadWeight').value) || null,
                 load_owner_id: parseInt(document.getElementById('startLoadOwner').value) || null,
                 rate_per_ton: parseFloat(document.getElementById('startRatePerTon').value) || null,
-                load_weight_on_load: parseFloat(document.getElementById('startLoadWeight').value) || null
+                fuel_on_client: document.getElementById('startFuelOn').checked,
+                fuel_liters: document.getElementById('startFuelOn').checked ? parseFloat(document.getElementById('startFuelLiters').value) || null : null
             };
 
             try {
@@ -971,14 +1236,62 @@
         document.getElementById('addExpenseForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const resultDiv = document.getElementById('addExpenseResult');
+            const expenseType = document.getElementById('expenseType').value;
+            const tripId = document.getElementById('expenseTripId').value;
+
+            // Validar que el tipo de gasto sea seleccionado
+            if (!expenseType) {
+                resultDiv.innerHTML = '<p class="alert alert-error">Debe seleccionar un tipo de gasto</p>';
+                return;
+            }
 
             const data = {
-                trip_id: parseInt(document.getElementById('expenseTripId').value),
-                expense_type: document.getElementById('expenseType').value,
-                amount: parseFloat(document.getElementById('expenseAmount').value),
-                description: document.getElementById('expenseDescription').value || '',
-                date: document.getElementById('expenseDate').value
+                trip_id: tripId ? parseInt(tripId) : null,
+                driver_id: parseInt(document.getElementById('expenseDriverId').value),
+                expense_type: expenseType,
+                date: document.getElementById('expenseDate').value,
+                amount: parseFloat(document.getElementById('expenseAmount').value)
             };
+
+            // Agregar campos específicos según el tipo
+            switch(expenseType) {
+                case 'Multa':
+                    data.fine_municipality = document.getElementById('expenseMunicipality').value;
+                    if (!data.fine_municipality) {
+                        resultDiv.innerHTML = '<p class="alert alert-error">Debe indicar el municipio</p>';
+                        return;
+                    }
+                    break;
+                case 'Reparaciones':
+                    data.repair_type = document.getElementById('expenseRepairType').value;
+                    if (!data.repair_type) {
+                        resultDiv.innerHTML = '<p class="alert alert-error">Debe seleccionar tipo de reparación</p>';
+                        return;
+                    }
+                    break;
+                case 'Combustible':
+                    data.fuel_liters = parseFloat(document.getElementById('expenseFuelLiters').value) || null;
+                    if (!data.fuel_liters) {
+                        resultDiv.innerHTML = '<p class="alert alert-error">Debe indicar litros cargados</p>';
+                        return;
+                    }
+                    break;
+                case 'Peaje':
+                    data.toll_type = document.getElementById('expenseTollType').value;
+                    data.toll_paid_by = document.getElementById('expenseTollPaidBy').value;
+                    if (data.toll_type === 'Tasa portuaria') {
+                        data.toll_port_fee_name = document.getElementById('expenseTollPortFeeName').value;
+                        if (!data.toll_port_fee_name) {
+                            resultDiv.innerHTML = '<p class="alert alert-error">Debe describir la tasa portuaria</p>';
+                            return;
+                        }
+                    }
+                    if (!data.toll_type || !data.toll_paid_by) {
+                        resultDiv.innerHTML = '<p class="alert alert-error">Debe completar todos los campos de peaje</p>';
+                        return;
+                    }
+                    break;
+            }
 
             try {
                 const response = await apiCall('/expenses/', {
@@ -993,11 +1306,13 @@
                     document.getElementById('addExpenseForm').reset();
                     setTimeout(() => {
                         closeModal('addExpenseModal');
+                        loadTrips();
                     }, 1500);
                 } else {
-                    resultDiv.innerHTML = `<p class="alert alert-error">${result.error || 'Error al agregar gasto'}</p>`;
+                    resultDiv.innerHTML = `<p class="alert alert-error">${result.error || result.details || 'Error al agregar gasto'}</p>`;
                 }
             } catch (error) {
+                console.error('Error:', error);
                 resultDiv.innerHTML = '<p class="alert alert-error">Error de conexión</p>';
             }
         });
@@ -1054,6 +1369,34 @@
 
         // Set today's date as default
         document.getElementById('tripStartDate').value = new Date().toISOString().split('T')[0];
+
+        // Funciones auxiliares para documento
+        function updateDocumentValidation() {
+            const docType = document.getElementById('startDocType').value;
+            const docInput = document.getElementById('startDocNumber');
+            const docLabel = document.getElementById('docNumberLabel');
+            
+            if (docType === 'CTG') {
+                docLabel.textContent = 'Número CTG (11 dígitos) *';
+                docInput.placeholder = 'Ej: 12345678901';
+                docInput.maxLength = '11';
+            } else if (docType === 'Remito') {
+                docLabel.textContent = 'Remito (5 + 8 dígitos) *';
+                docInput.placeholder = 'Ej: 0000187654321';
+                docInput.maxLength = '13';
+            }
+        }
+
+        function toggleFuelLiters() {
+            const fuelOn = document.getElementById('startFuelOn').checked;
+            const fuelLitersGroup = document.getElementById('fuelLitersGroup');
+            if (fuelOn) {
+                fuelLitersGroup.classList.remove('hidden');
+            } else {
+                fuelLitersGroup.classList.add('hidden');
+                document.getElementById('startFuelLiters').value = '';
+            }
+        }
     </script>
 </body>
 </html>

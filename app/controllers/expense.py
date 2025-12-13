@@ -15,9 +15,8 @@ class ExpenseController:
             if is_admin:
                 expenses = Expense.query.all()
             else:
-                # Los conductores solo ven gastos de sus propios viajes
-                from ..models.trip import Trip
-                expenses = Expense.query.join(Trip).filter(Trip.driver_id == current_user_id).all()
+                # Conductores: ver solo sus propios gastos
+                expenses = Expense.query.filter_by(driver_id=current_user_id).all()
             return jsonify([expense.to_dict() for expense in expenses]), 200
         except SQLAlchemyError as e:
             return jsonify({'error': 'Error al obtener gastos', 'details': str(e)}), 500
@@ -28,12 +27,9 @@ class ExpenseController:
         try:
             expense = Expense.query.get_or_404(expense_id)
             
-            # Verificar permisos: solo admin o el conductor del viaje
-            if not is_admin:
-                from ..models.trip import Trip
-                trip = Trip.query.get(expense.trip_id)
-                if trip and trip.driver_id != current_user_id:
-                    return jsonify({'error': 'No tienes permisos para ver este gasto'}), 403
+            # Verificar permisos: solo admin o el propio conductor
+            if not is_admin and expense.driver_id != current_user_id:
+                return jsonify({'error': 'No tienes permisos para ver este gasto'}), 403
             
             return jsonify(expense.to_dict()), 200
         except Exception as e:
@@ -41,20 +37,27 @@ class ExpenseController:
 
     @staticmethod
     def create_expense(data, current_user_id=None, is_admin=False):
-        """Crea un nuevo gasto (admin puede crear cualquiera, chofer solo de sus viajes)"""
+        """Crea un nuevo gasto (admin puede crear cualquiera; chofer puede crear los suyos mientras el viaje esté en curso si se asocia a un viaje)"""
         try:
             # Validar datos
             schema = ExpenseSchema()
             validated_data = schema.load(data)
             
-            # Si es chofer, verificar que el viaje sea suyo
+            # Si es chofer, asegurar que driver_id coincide y (si hay trip) que el viaje esté asignado al chofer y en curso
             if not is_admin:
-                from ..models.trip import Trip
-                trip = Trip.query.get(validated_data.get('trip_id'))
-                if not trip:
-                    return jsonify({'error': 'Viaje no encontrado'}), 404
-                if trip.driver_id != current_user_id:
-                    return jsonify({'error': 'No puedes crear gastos para viajes de otros choferes'}), 403
+                if validated_data.get('driver_id') != current_user_id:
+                    return jsonify({'error': 'No puedes crear gastos para otro chofer'}), 403
+                trip_id = validated_data.get('trip_id')
+                if trip_id is not None:
+                    from ..models.trip import Trip
+                    trip = Trip.query.get(trip_id)
+                    if not trip:
+                        return jsonify({'error': 'Viaje no encontrado'}), 404
+                    # Validar que el chofer esté asignado al viaje (relación muchos-a-muchos) y que esté en curso
+                    if not any(d.id == current_user_id for d in trip.drivers):
+                        return jsonify({'error': 'No puedes crear gastos para viajes no asignados a ti'}), 403
+                    if trip.state_id != 'En curso':
+                        return jsonify({'error': 'Solo puedes cargar gastos cuando el viaje está en curso'}), 403
             
             # Crear gasto
             expense = Expense(**validated_data)
@@ -74,16 +77,13 @@ class ExpenseController:
 
     @staticmethod
     def update_expense(expense_id, data, current_user_id=None, is_admin=False):
-        """Actualiza un gasto existente (admin puede editar cualquiera, chofer solo de sus viajes)"""
+        """Actualiza un gasto existente (solo admin puede editar)"""
         try:
             expense = Expense.query.get_or_404(expense_id)
             
-            # Si es chofer, verificar que el gasto sea de un viaje suyo
+            # Chofer no puede editar
             if not is_admin:
-                from ..models.trip import Trip
-                trip = Trip.query.get(expense.trip_id)
-                if trip and trip.driver_id != current_user_id:
-                    return jsonify({'error': 'No puedes editar gastos de viajes de otros choferes'}), 403
+                return jsonify({'error': 'No tienes permisos para editar gastos'}), 403
             
             # Validar datos
             schema = ExpenseUpdateSchema()

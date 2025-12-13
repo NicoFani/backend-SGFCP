@@ -119,9 +119,12 @@ def seed_relationships():
         if len(drivers) >= 2 and len(clients) >= 2 and len(load_owners) >= 2:
             trips_data = [
                 {
-                    'document_number': 1001,
                     'origin': 'Buenos Aires',
+                    'origin_description': 'Depósito Central - Avenida 9 de Julio 500',
                     'destination': 'Rosario',
+                    'destination_description': 'Centro de Distribución - Ruta 34',
+                    'document_type': 'CTG',
+                    'document_number': '12345678901',
                     'estimated_kms': 300.0,
                     'start_date': date(2024, 11, 1),
                     'end_date': date(2024, 11, 2),
@@ -129,16 +132,19 @@ def seed_relationships():
                     'load_weight_on_unload': 24800.0,
                     'rate_per_ton': 1500.0,
                     'fuel_on_client': False,
-                    'client_advance_payment': 10000.0,
+                    'fuel_liters': None,
                     'state_id': 'Finalizado',
-                    'driver_id': drivers[0].id,
                     'client_id': clients[0].id,
-                    'load_owner_id': load_owners[0].id
+                    'load_owner_id': load_owners[0].id,
+                    'drivers': [drivers[0]]
                 },
                 {
-                    'document_number': 1002,
                     'origin': 'Córdoba',
+                    'origin_description': 'Playa de Maniobras - Zona Industrial',
                     'destination': 'Mendoza',
+                    'destination_description': 'Terminal de Carga',
+                    'document_type': 'Remito',
+                    'document_number': '0000287654321',  # 5 dígitos punto de venta + 8 número
                     'estimated_kms': 600.0,
                     'start_date': date(2024, 11, 5),
                     'end_date': date(2024, 11, 7),
@@ -146,16 +152,19 @@ def seed_relationships():
                     'load_weight_on_unload': 27900.0,
                     'rate_per_ton': 1800.0,
                     'fuel_on_client': True,
-                    'client_advance_payment': 15000.0,
+                    'fuel_liters': 120.0,
                     'state_id': 'Finalizado',
-                    'driver_id': drivers[1].id,
                     'client_id': clients[1].id,
-                    'load_owner_id': load_owners[1].id
+                    'load_owner_id': load_owners[1].id,
+                    'drivers': [drivers[1], drivers[0]]  # Múltiples choferes
                 },
                 {
-                    'document_number': 1003,
                     'origin': 'Santa Fe',
+                    'origin_description': 'Puerto Interior',
                     'destination': 'Buenos Aires',
+                    'destination_description': 'Centro de Acopio',
+                    'document_type': 'CTG',
+                    'document_number': '10987654321',
                     'estimated_kms': 470.0,
                     'start_date': date(2024, 11, 10),
                     'end_date': date(2024, 11, 11),
@@ -163,33 +172,39 @@ def seed_relationships():
                     'load_weight_on_unload': 21950.0,
                     'rate_per_ton': 1600.0,
                     'fuel_on_client': False,
-                    'client_advance_payment': 8000.0,
+                    'fuel_liters': None,
                     'state_id': 'Finalizado',
-                    'driver_id': drivers[0].id,
                     'client_id': clients[0].id,
-                    'load_owner_id': load_owners[0].id
+                    'load_owner_id': load_owners[0].id,
+                    'drivers': [drivers[0]]
                 },
                 {
-                    'document_number': 1004,
                     'origin': 'Buenos Aires',
+                    'origin_description': 'Depósito Central',
                     'destination': 'Tucumán',
+                    'destination_description': 'Centro Regional',
+                    'document_type': 'Remito',
+                    'document_number': '0001234567890',
                     'estimated_kms': 1200.0,
                     'start_date': date(2024, 11, 15),
                     'end_date': None,
                     'load_weight_on_load': 30000.0,
                     'load_weight_on_unload': None,
                     'rate_per_ton': 2000.0,
-                    'fuel_on_client': False,
-                    'client_advance_payment': 20000.0,
+                    'fuel_on_client': True,
+                    'fuel_liters': 150.0,
                     'state_id': 'En curso',
-                    'driver_id': drivers[1].id,
                     'client_id': clients[1].id,
-                    'load_owner_id': load_owners[1].id
+                    'load_owner_id': load_owners[1].id,
+                    'drivers': [drivers[1]]
                 },
                 {
-                    'document_number': None,
                     'origin': 'Rosario',
+                    'origin_description': 'Estación de Carga',
                     'destination': 'Córdoba',
+                    'destination_description': 'Destino Final',
+                    'document_type': None,
+                    'document_number': None,
                     'estimated_kms': 400.0,
                     'start_date': date(2024, 11, 20),
                     'end_date': None,
@@ -197,16 +212,20 @@ def seed_relationships():
                     'load_weight_on_unload': None,
                     'rate_per_ton': 1700.0,
                     'fuel_on_client': False,
-                    'client_advance_payment': None,
+                    'fuel_liters': None,
                     'state_id': 'Pendiente',
-                    'driver_id': drivers[0].id,
                     'client_id': clients[0].id,
-                    'load_owner_id': load_owners[0].id
+                    'load_owner_id': load_owners[1].id,
+                    'drivers': [drivers[0], drivers[1]]  # Múltiples choferes
                 }
             ]
             
             for trip_data in trips_data:
+                # Extraer drivers para asignarlos después
+                trip_drivers = trip_data.pop('drivers', [])
+                
                 trip = Trip(**trip_data)
+                trip.drivers = trip_drivers
                 db.session.add(trip)
                 db.session.flush()  # Obtener ID del viaje
                 created_counts['trips'] += 1
@@ -214,10 +233,13 @@ def seed_relationships():
                 # 4. Crear Gastos solo para viajes finalizados
                 if trip_data['state_id'] == 'Finalizado':
                     expenses_for_trip = []
+                    # Usar el primer driver asignado al viaje
+                    driver_id = trip_drivers[0].id if trip_drivers else drivers[0].id
                     
                     # Combustible
                     expenses_for_trip.append({
                         'trip_id': trip.id,
+                        'driver_id': driver_id,
                         'expense_type': 'Combustible',
                         'date': trip.start_date,
                         'amount': 35000.0,
@@ -227,12 +249,14 @@ def seed_relationships():
                         'fine_municipality': None,
                         'repair_type': None,
                         'toll_type': None,
-                        'toll_paid_by': None
+                        'toll_paid_by': None,
+                        'toll_port_fee_name': None
                     })
                     
                     # Peaje
                     expenses_for_trip.append({
                         'trip_id': trip.id,
+                        'driver_id': driver_id,
                         'expense_type': 'Peaje',
                         'date': trip.start_date,
                         'amount': 4500.0,
@@ -242,12 +266,14 @@ def seed_relationships():
                         'fine_municipality': None,
                         'repair_type': None,
                         'toll_type': 'Peaje de ruta',
-                        'toll_paid_by': 'Chofer'
+                        'toll_paid_by': 'Chofer',
+                        'toll_port_fee_name': None
                     })
                     
                     # Viáticos
                     expenses_for_trip.append({
                         'trip_id': trip.id,
+                        'driver_id': driver_id,
                         'expense_type': 'Viáticos',
                         'date': trip.start_date,
                         'amount': 8000.0,
@@ -257,7 +283,8 @@ def seed_relationships():
                         'fine_municipality': None,
                         'repair_type': None,
                         'toll_type': None,
-                        'toll_paid_by': None
+                        'toll_paid_by': None,
+                        'toll_port_fee_name': None
                     })
                     
                     for expense_data in expenses_for_trip:

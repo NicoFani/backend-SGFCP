@@ -29,7 +29,7 @@ def create_expense():
     is_admin = get_jwt().get('is_admin', False)
     return ExpenseController.create_expense(request.get_json(), current_user_id, is_admin)
 
-# UPDATE expense (admin y choferes pueden editar sus propios gastos)
+# UPDATE expense (solo admin)
 @expense_bp.route('/<int:expense_id>', methods=['PUT'])
 @jwt_required()
 def update_expense(expense_id):
