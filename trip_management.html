@@ -462,6 +462,7 @@
             <div class="tabs">
                 <button class="tab active" onclick="switchTab('trips')">🗺️ Mis Viajes</button>
                 <button id="adminTab" class="tab hidden" onclick="switchTab('admin')">⚙️ Crear Viaje (Admin)</button>
+                <button id="payrollTab" class="tab hidden" onclick="switchTab('payroll')">💰 Liquidación (Admin)</button>
             </div>
 
             <!-- Trips Tab (Chofer y Admin) -->
@@ -520,6 +521,121 @@
                     <div id="createTripResult"></div>
                 </div>
             </div>
+
+            <!-- Payroll Tab (Solo Admin) -->
+            <div id="payroll-tab" class="tab-content">
+                <!-- Configuración -->
+                <div class="card">
+                    <h3>⚙️ Configuración de Liquidación</h3>
+                    <form id="payrollSettingsForm">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Mínimo Garantizado ($)</label>
+                                <input type="number" id="guaranteedMinimum" step="0.01" placeholder="150000.00">
+                            </div>
+                            <div class="form-group">
+                                <label>Comisión por Defecto (%)</label>
+                                <input type="number" id="defaultCommission" step="0.01" value="18.00" placeholder="18.00">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-primary">Actualizar Configuración</button>
+                    </form>
+                    <div id="settingsResult"></div>
+                </div>
+
+                <!-- Períodos -->
+                <div class="card">
+                    <h3>📅 Gestión de Períodos</h3>
+                    <div class="form-row">
+                        <button class="btn-primary" onclick="loadCurrentPeriod()">Ver Período Actual</button>
+                        <button class="btn-secondary" onclick="createNewPeriod()">Crear Nuevo Período</button>
+                    </div>
+                    <div id="periodInfo" style="margin-top: 15px;"></div>
+                </div>
+
+                <!-- Generar Liquidaciones -->
+                <div class="card">
+                    <h3>💵 Generar Liquidaciones</h3>
+                    <form id="generatePayrollForm">
+                        <div class="form-group">
+                            <label>Período</label>
+                            <select id="payrollPeriod" required>
+                                <option value="">Cargar períodos...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Chofer(es) (dejar vacío para todos)</label>
+                            <select id="payrollDrivers" multiple size="4">
+                                <option value="">Cargando choferes...</option>
+                            </select>
+                            <small style="color: #666;">Ctrl/Cmd + clic para seleccionar múltiples</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Tipo de Cálculo</label>
+                            <select id="calculationType" required>
+                                <option value="both">Ambos (Comparativa)</option>
+                                <option value="by_tonnage">Por Tonelada</option>
+                                <option value="by_km">Por Kilómetro</option>
+                            </select>
+                        </div>
+                        <p style="color: #666; font-size: 0.9em; margin-top: 10px;">
+                            ℹ️ Se generan solo con viajes finalizados. Los viajes en curso se aplicarán como ajustes cuando se completen.
+                        </p>
+                        <button type="submit" class="btn-primary">Generar Resúmenes</button>
+                    </form>
+                    <div id="generateResult"></div>
+                </div>
+
+                <!-- Listado de Liquidaciones -->
+                <div class="card">
+                    <h3>📊 Liquidaciones Generadas</h3>
+                    <div class="form-row">
+                        <button class="btn-secondary" onclick="loadPayrollSummaries()">Actualizar Lista</button>
+                    </div>
+                    <div id="payrollSummariesContainer" style="margin-top: 15px;"></div>
+                </div>
+
+                <!-- Ajustes Retroactivos -->
+                <div class="card">
+                    <h3>🔧 Crear Ajuste Retroactivo</h3>
+                    <form id="createAdjustmentForm">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Período Origen</label>
+                                <select id="adjustmentPeriod" required>
+                                    <option value="">Seleccionar período...</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Chofer</label>
+                                <select id="adjustmentDriver" required>
+                                    <option value="">Seleccionar chofer...</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Monto ($)</label>
+                                <input type="number" id="adjustmentAmount" step="0.01" required placeholder="Positivo o negativo">
+                            </div>
+                            <div class="form-group">
+                                <label>Tipo</label>
+                                <select id="adjustmentType" required>
+                                    <option value="manual">Manual</option>
+                                    <option value="trip_correction">Corrección de Viaje</option>
+                                    <option value="expense_post_close">Gasto Post-Cierre</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Descripción</label>
+                            <textarea id="adjustmentDescription" required rows="2" placeholder="Motivo del ajuste"></textarea>
+                        </div>
+                        <button type="submit" class="btn-primary">Crear Ajuste</button>
+                    </form>
+                    <div id="adjustmentResult"></div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -564,8 +680,23 @@
                         <input type="number" id="startLoadWeight" step="0.1">
                     </div>
                     <div class="form-group">
-                        <label>Tarifa por Tonelada</label>
-                        <input type="number" id="startRatePerTon" step="0.01">
+                        <label>Tipo de Cálculo *</label>
+                        <select id="startCalculationType" required onchange="toggleRateFields()">
+                            <option value="">Seleccionar...</option>
+                            <option value="by_tonnage">Por Tonelada</option>
+                            <option value="by_km">Por Kilómetro</option>
+                            <option value="both">Ambos</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group" id="ratePerTonGroup" style="display: none;">
+                        <label>Tarifa por Tonelada *</label>
+                        <input type="number" id="startRatePerTon" step="0.01" min="0">
+                    </div>
+                    <div class="form-group" id="kmRateGroup" style="display: none;">
+                        <label>Tarifa por KM *</label>
+                        <input type="number" id="startKmRate" step="0.01" min="0">
                     </div>
                 </div>
                 <div class="form-group">
@@ -718,6 +849,17 @@
         </div>
     </div>
 
+    <!-- Modal: Detalle de Liquidación -->
+    <div id="payrollDetailModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2>📊 Detalle de Liquidación</h2>
+                <button class="close-modal" onclick="closeModal('payrollDetailModal')">&times;</button>
+            </div>
+            <div id="payrollDetailContent"></div>
+        </div>
+    </div>
+
     <script>
         const API_URL = 'http://localhost:5000';
         let authToken = null;
@@ -754,6 +896,7 @@
                     if (currentUser.is_admin) {
                         document.getElementById('adminTab').classList.remove('hidden');
                         await loadAdminData();
+                        await initPayrollData();
                     }
                     
                     await loadTrips();
@@ -1164,14 +1307,18 @@
             const resultDiv = document.getElementById('startTripResult');
             const tripId = document.getElementById('startTripId').value;
 
+            const calcType = document.getElementById('startCalculationType').value;
+            
             const data = {
                 state_id: 'En curso',
                 document_type: document.getElementById('startDocType').value,
                 document_number: document.getElementById('startDocNumber').value,
                 estimated_kms: parseFloat(document.getElementById('startEstimatedKms').value) || null,
                 load_weight_on_load: parseFloat(document.getElementById('startLoadWeight').value) || null,
+                calculation_type: calcType,
                 load_owner_id: parseInt(document.getElementById('startLoadOwner').value) || null,
-                rate_per_ton: parseFloat(document.getElementById('startRatePerTon').value) || null,
+                rate_per_ton: (calcType === 'by_tonnage' || calcType === 'both') ? parseFloat(document.getElementById('startRatePerTon').value) || null : null,
+                km_rate: (calcType === 'by_km' || calcType === 'both') ? parseFloat(document.getElementById('startKmRate').value) || null : null,
                 fuel_on_client: document.getElementById('startFuelOn').checked,
                 fuel_liters: document.getElementById('startFuelOn').checked ? parseFloat(document.getElementById('startFuelLiters').value) || null : null
             };
@@ -1395,6 +1542,586 @@
             } else {
                 fuelLitersGroup.classList.add('hidden');
                 document.getElementById('startFuelLiters').value = '';
+            }
+        }
+
+        function toggleRateFields() {
+            const calcType = document.getElementById('startCalculationType').value;
+            const ratePerTonGroup = document.getElementById('ratePerTonGroup');
+            const kmRateGroup = document.getElementById('kmRateGroup');
+            const ratePerTonInput = document.getElementById('startRatePerTon');
+            const kmRateInput = document.getElementById('startKmRate');
+            
+            // Ocultar todos primero
+            ratePerTonGroup.style.display = 'none';
+            kmRateGroup.style.display = 'none';
+            ratePerTonInput.removeAttribute('required');
+            kmRateInput.removeAttribute('required');
+            
+            // Mostrar según el tipo
+            if (calcType === 'by_tonnage' || calcType === 'both') {
+                ratePerTonGroup.style.display = 'block';
+                ratePerTonInput.setAttribute('required', 'required');
+            }
+            if (calcType === 'by_km' || calcType === 'both') {
+                kmRateGroup.style.display = 'block';
+                kmRateInput.setAttribute('required', 'required');
+            }
+        }
+
+        // ====================== FUNCIONES DE LIQUIDACIÓN ======================
+
+        // Configuración de Liquidación
+        document.getElementById('payrollSettingsForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const resultDiv = document.getElementById('settingsResult');
+            
+            const data = {
+                guaranteed_minimum: parseFloat(document.getElementById('guaranteedMinimum').value),
+                default_commission_percentage: parseFloat(document.getElementById('defaultCommission').value),
+                auto_generation_day: 31,
+                effective_from: new Date().toISOString()
+            };
+
+            try {
+                const response = await apiCall('/api/payroll/settings', {
+                    method: 'PUT',
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    resultDiv.innerHTML = '<p class="alert alert-success">✅ Configuración actualizada correctamente</p>';
+                } else {
+                    resultDiv.innerHTML = `<p class="alert alert-error">❌ ${result.message}</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = '<p class="alert alert-error">❌ Error de conexión</p>';
+            }
+        });
+
+        // Cargar configuración actual
+        async function loadCurrentSettings() {
+            try {
+                const response = await apiCall('/api/payroll/settings');
+                const result = await response.json();
+                
+                if (result.success) {
+                    document.getElementById('guaranteedMinimum').value = result.data.guaranteed_minimum;
+                    document.getElementById('defaultCommission').value = result.data.default_commission_percentage;
+                }
+            } catch (error) {
+                console.error('Error cargando configuración:', error);
+            }
+        }
+
+        // Cargar período actual
+        async function loadCurrentPeriod() {
+            const infoDiv = document.getElementById('periodInfo');
+            infoDiv.innerHTML = '<p>Cargando...</p>';
+            
+            try {
+                const response = await apiCall('/api/payroll/periods/current');
+                const result = await response.json();
+                
+                if (result.success) {
+                    const period = result.data;
+                    const statusColors = {
+                        'open': '🟢',
+                        'closed': '🔴',
+                        'with_adjustments': '🟡'
+                    };
+                    
+                    infoDiv.innerHTML = `
+                        <div style="background: #f9f9f9; padding: 15px; border-radius: 5px;">
+                            <h4>${statusColors[period.status]} Período ${period.year}-${String(period.month).padStart(2, '0')}</h4>
+                            <p><strong>Estado:</strong> ${period.status}</p>
+                            <p><strong>Inicio:</strong> ${period.start_date}</p>
+                            <p><strong>Fin:</strong> ${period.end_date}</p>
+                            <p><strong>Viajes en curso:</strong> ${period.has_trips_in_progress ? 'Sí' : 'No'}</p>
+                            ${period.status === 'open' ? `
+                                <button class="btn-primary" onclick="closePeriod(${period.id})">Cerrar Período</button>
+                            ` : ''}
+                        </div>
+                    `;
+                } else {
+                    infoDiv.innerHTML = `<p class="alert alert-error">${result.message}</p>`;
+                }
+            } catch (error) {
+                infoDiv.innerHTML = '<p class="alert alert-error">Error de conexión</p>';
+            }
+        }
+
+        // Crear nuevo período
+        async function createNewPeriod() {
+            const now = new Date();
+            const data = {
+                year: now.getFullYear(),
+                month: now.getMonth() + 1,
+                start_date: new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0],
+                end_date: new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]
+            };
+
+            try {
+                const response = await apiCall('/api/payroll/periods', {
+                    method: 'POST',
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert('✅ Período creado correctamente');
+                    loadCurrentPeriod();
+                    loadPeriodsForDropdowns();
+                } else {
+                    alert('❌ ' + result.message);
+                }
+            } catch (error) {
+                alert('❌ Error de conexión');
+            }
+        }
+
+        // Cerrar período
+        async function closePeriod(periodId) {
+            if (!confirm('¿Está seguro de cerrar este período?')) return;
+
+            try {
+                const response = await apiCall(`/api/payroll/periods/${periodId}/close`, {
+                    method: 'POST',
+                    body: JSON.stringify({ force: false })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert('✅ Período cerrado correctamente');
+                    loadCurrentPeriod();
+                } else {
+                    alert('❌ ' + result.message);
+                }
+            } catch (error) {
+                alert('❌ Error de conexión');
+            }
+        }
+
+        // Cargar períodos en dropdowns
+        async function loadPeriodsForDropdowns() {
+            try {
+                const response = await apiCall('/api/payroll/periods?per_page=50');
+                const result = await response.json();
+                
+                if (result.success) {
+                    const periods = result.data;
+                    
+                    // Para generar liquidaciones
+                    const payrollSelect = document.getElementById('payrollPeriod');
+                    payrollSelect.innerHTML = '<option value="">Seleccionar período...</option>';
+                    periods.forEach(p => {
+                        payrollSelect.innerHTML += `<option value="${p.id}">${p.year}-${String(p.month).padStart(2, '0')} (${p.status})</option>`;
+                    });
+                    
+                    // Para ajustes
+                    const adjustmentSelect = document.getElementById('adjustmentPeriod');
+                    adjustmentSelect.innerHTML = '<option value="">Seleccionar período...</option>';
+                    periods.filter(p => p.status !== 'open').forEach(p => {
+                        adjustmentSelect.innerHTML += `<option value="${p.id}">${p.year}-${String(p.month).padStart(2, '0')}</option>`;
+                    });
+                }
+            } catch (error) {
+                console.error('Error cargando períodos:', error);
+            }
+        }
+
+        // Generar liquidaciones
+        document.getElementById('generatePayrollForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const resultDiv = document.getElementById('generateResult');
+            resultDiv.innerHTML = '<p>⏳ Generando liquidaciones...</p>';
+            
+            const data = {
+                period_id: parseInt(document.getElementById('payrollPeriod').value),
+                calculation_type: document.getElementById('calculationType').value
+            };
+
+            try {
+                const response = await apiCall('/api/payroll/summaries/generate', {
+                    method: 'POST',
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    resultDiv.innerHTML = `<p class="alert alert-success">✅ ${result.message}</p>`;
+                    setTimeout(() => loadPayrollSummaries(), 1000);
+                } else {
+                    resultDiv.innerHTML = `<p class="alert alert-error">❌ ${result.message}</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = '<p class="alert alert-error">❌ Error de conexión</p>';
+            }
+        });
+
+        // Cargar liquidaciones generadas
+        async function loadPayrollSummaries() {
+            const container = document.getElementById('payrollSummariesContainer');
+            container.innerHTML = '<p>Cargando...</p>';
+            
+            try {
+                const response = await apiCall('/api/payroll/summaries?per_page=20');
+                const result = await response.json();
+                
+                if (result.success && result.data.length > 0) {
+                    container.innerHTML = '';
+                    result.data.forEach(summary => {
+                        const div = document.createElement('div');
+                        div.className = 'trip-card';
+                        div.style.marginBottom = '10px';
+                        
+                        const statusColors = {
+                            'draft': '🟡',
+                            'approved': '🟢',
+                            'paid': '✅'
+                        };
+                        
+                        div.innerHTML = `
+                            <div style="display: flex; justify-content: space-between; align-items: start;">
+                                <div>
+                                    <h4>${statusColors[summary.status]} Liquidación #${summary.id}</h4>
+                                    <p><strong>Período:</strong> ${summary.period_id} | <strong>Chofer:</strong> ID ${summary.driver_id}</p>
+                                    <p><strong>Tipo:</strong> ${summary.calculation_type}</p>
+                                    <p><strong>Comisión viajes:</strong> $${parseFloat(summary.commission_from_trips).toFixed(2)}</p>
+                                    <p><strong>Total a pagar:</strong> <span style="font-size: 1.2em; color: #27ae60;">$${parseFloat(summary.total_amount).toFixed(2)}</span></p>
+                                </div>
+                                <div style="display: flex; flex-direction: column; gap: 5px;">
+                                    ${summary.status === 'draft' ? `
+                                        <button class="btn-primary" onclick="approveSummary(${summary.id})">Aprobar</button>
+                                    ` : ''}
+                                    <button class="btn-secondary" onclick="exportSummary(${summary.id}, 'excel')">📊 Excel</button>
+                                    ${summary.status === 'approved' ? `
+                                        <button class="btn-secondary" onclick="exportSummary(${summary.id}, 'pdf')">📄 PDF</button>
+                                    ` : ''}
+                                    <button class="btn-secondary" onclick="viewSummaryDetail(${summary.id})">👁️ Detalle</button>
+                                </div>
+                            </div>
+                        `;
+                        container.appendChild(div);
+                    });
+                } else {
+                    container.innerHTML = '<p>No hay liquidaciones generadas</p>';
+                }
+            } catch (error) {
+                container.innerHTML = '<p class="alert alert-error">Error de conexión</p>';
+            }
+        }
+
+        // Aprobar liquidación
+        async function approveSummary(summaryId) {
+            if (!confirm('¿Aprobar esta liquidación?')) return;
+
+            try {
+                const response = await apiCall(`/api/payroll/summaries/${summaryId}/approve`, {
+                    method: 'POST',
+                    body: JSON.stringify({ notes: 'Aprobado desde interfaz de prueba' })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert('✅ Liquidación aprobada');
+                    loadPayrollSummaries();
+                } else {
+                    alert('❌ ' + result.message);
+                }
+            } catch (error) {
+                alert('❌ Error de conexión');
+            }
+        }
+
+        // Exportar liquidación
+        async function exportSummary(summaryId, format) {
+            try {
+                const response = await apiCall(`/api/payroll/summaries/${summaryId}/export`, {
+                    method: 'POST',
+                    body: JSON.stringify({ format: format })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert(`✅ Exportado a ${format.toUpperCase()}: ${result.data.filepath}`);
+                } else {
+                    alert('❌ ' + result.message);
+                }
+            } catch (error) {
+                alert('❌ Error de conexión');
+            }
+        }
+
+        // Ver detalle de liquidación
+        async function viewSummaryDetail(summaryId) {
+            try {
+                const response = await apiCall(`/api/payroll/summaries/${summaryId}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    const summary = result.data.summary;
+                    const details = result.data.details || [];
+                    
+                    // Obtener datos del período desde el objeto period si existe
+                    const periodMonth = summary.period?.month || 'N/A';
+                    const periodYear = summary.period?.year || 'N/A';
+                    const commissionPct = summary.driver_commission_percentage || 0;
+                    
+                    // Agrupar detalles por tipo
+                    const groupedDetails = {
+                        trip_commission: [],
+                        expense_reimburse: [],
+                        expense_deduct: [],
+                        advance: [],
+                        adjustment: [],
+                        guaranteed_minimum: []
+                    };
+                    
+                    details.forEach(d => {
+                        if (groupedDetails[d.detail_type]) {
+                            groupedDetails[d.detail_type].push(d);
+                        }
+                    });
+                    
+                    // Construir HTML del detalle
+                    let detailHtml = `
+                        <div style="padding: 10px;">
+                            <div style="margin-bottom: 20px; padding: 15px; background: #f5f5f5; border-radius: 5px;">
+                                <h3 style="margin: 0 0 10px 0;">Liquidación #${summary.id}</h3>
+                                <p style="margin: 5px 0;"><strong>Chofer:</strong> ID ${summary.driver_id}</p>
+                                <p style="margin: 5px 0;"><strong>Período:</strong> ${periodYear}-${String(periodMonth).padStart(2, '0')}</p>
+                                <p style="margin: 5px 0;"><strong>% Comisión:</strong> ${parseFloat(commissionPct).toFixed(2)}%</p>
+                                <p style="margin: 5px 0;"><strong>Estado:</strong> ${summary.status}</p>
+                            </div>
+                            
+                            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                                <thead>
+                                    <tr style="background: #e3f2fd;">
+                                        <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Concepto</th>
+                                        <th style="padding: 10px; text-align: right; border: 1px solid #ddd;">Monto</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                    `;
+                    
+                    // Sección: Comisiones de viajes
+                    if (groupedDetails.trip_commission.length > 0) {
+                        detailHtml += `
+                            <tr style="background: #e8f5e9;">
+                                <td colspan="2" style="padding: 8px; font-weight: bold; border: 1px solid #ddd;">💰 Comisiones por Viajes</td>
+                            </tr>
+                        `;
+                        groupedDetails.trip_commission.forEach(d => {
+                            detailHtml += `
+                                <tr>
+                                    <td style="padding: 8px; border: 1px solid #ddd;">${d.description}</td>
+                                    <td style="padding: 8px; text-align: right; border: 1px solid #ddd; color: green;">+$${parseFloat(d.amount).toFixed(2)}</td>
+                                </tr>
+                            `;
+                        });
+                    }
+                    
+                    // Sección: Gastos a reembolsar
+                    if (groupedDetails.expense_reimburse.length > 0) {
+                        detailHtml += `
+                            <tr style="background: #e3f2fd;">
+                                <td colspan="2" style="padding: 8px; font-weight: bold; border: 1px solid #ddd;">💵 Gastos a Reembolsar</td>
+                            </tr>
+                        `;
+                        groupedDetails.expense_reimburse.forEach(d => {
+                            detailHtml += `
+                                <tr>
+                                    <td style="padding: 8px; border: 1px solid #ddd;">${d.description}</td>
+                                    <td style="padding: 8px; text-align: right; border: 1px solid #ddd; color: green;">+$${parseFloat(d.amount).toFixed(2)}</td>
+                                </tr>
+                            `;
+                        });
+                    }
+                    
+                    // Sección: Gastos a descontar
+                    if (groupedDetails.expense_deduct.length > 0) {
+                        detailHtml += `
+                            <tr style="background: #ffebee;">
+                                <td colspan="2" style="padding: 8px; font-weight: bold; border: 1px solid #ddd;">⚠️ Gastos a Descontar</td>
+                            </tr>
+                        `;
+                        groupedDetails.expense_deduct.forEach(d => {
+                            detailHtml += `
+                                <tr>
+                                    <td style="padding: 8px; border: 1px solid #ddd;">${d.description}</td>
+                                    <td style="padding: 8px; text-align: right; border: 1px solid #ddd; color: red;">-$${parseFloat(d.amount).toFixed(2)}</td>
+                                </tr>
+                            `;
+                        });
+                    }
+                    
+                    // Sección: Adelantos
+                    if (groupedDetails.advance.length > 0) {
+                        detailHtml += `
+                            <tr style="background: #fff3e0;">
+                                <td colspan="2" style="padding: 8px; font-weight: bold; border: 1px solid #ddd;">💸 Adelantos</td>
+                            </tr>
+                        `;
+                        groupedDetails.advance.forEach(d => {
+                            detailHtml += `
+                                <tr>
+                                    <td style="padding: 8px; border: 1px solid #ddd;">${d.description}</td>
+                                    <td style="padding: 8px; text-align: right; border: 1px solid #ddd; color: red;">-$${parseFloat(d.amount).toFixed(2)}</td>
+                                </tr>
+                            `;
+                        });
+                    }
+                    
+                    // Sección: Ajustes
+                    if (groupedDetails.adjustment.length > 0) {
+                        detailHtml += `
+                            <tr style="background: #f3e5f5;">
+                                <td colspan="2" style="padding: 8px; font-weight: bold; border: 1px solid #ddd;">⚙️ Ajustes Retroactivos</td>
+                            </tr>
+                        `;
+                        groupedDetails.adjustment.forEach(d => {
+                            const color = parseFloat(d.amount) >= 0 ? 'green' : 'red';
+                            const sign = parseFloat(d.amount) >= 0 ? '+' : '';
+                            detailHtml += `
+                                <tr>
+                                    <td style="padding: 8px; border: 1px solid #ddd;">${d.description}</td>
+                                    <td style="padding: 8px; text-align: right; border: 1px solid #ddd; color: ${color};">${sign}$${parseFloat(d.amount).toFixed(2)}</td>
+                                </tr>
+                            `;
+                        });
+                    }
+                    
+                    // Sección: Garantía mínima
+                    if (groupedDetails.guaranteed_minimum.length > 0) {
+                        detailHtml += `
+                            <tr style="background: #e1f5fe;">
+                                <td colspan="2" style="padding: 8px; font-weight: bold; border: 1px solid #ddd;">🛡️ Garantía Mínima</td>
+                            </tr>
+                        `;
+                        groupedDetails.guaranteed_minimum.forEach(d => {
+                            detailHtml += `
+                                <tr>
+                                    <td style="padding: 8px; border: 1px solid #ddd;">${d.description}</td>
+                                    <td style="padding: 8px; text-align: right; border: 1px solid #ddd; color: green;">+$${parseFloat(d.amount).toFixed(2)}</td>
+                                </tr>
+                            `;
+                        });
+                    }
+                    
+                    // Total
+                    detailHtml += `
+                                    <tr style="background: #fafafa; font-weight: bold; font-size: 1.1em;">
+                                        <td style="padding: 12px; border: 1px solid #ddd;">TOTAL A PAGAR</td>
+                                        <td style="padding: 12px; text-align: right; border: 1px solid #ddd; color: #2196F3;">$${parseFloat(summary.total_amount).toFixed(2)}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            
+                            <div style="margin-top: 15px; padding: 10px; background: #fff9c4; border-radius: 5px; font-size: 0.9em;">
+                                <strong>📊 Resumen:</strong>
+                                <ul style="margin: 5px 0; padding-left: 20px;">
+                                    <li>Comisiones: $${parseFloat(summary.commission_from_trips).toFixed(2)}</li>
+                                    <li>Gastos a reembolsar: +$${parseFloat(summary.expenses_to_reimburse).toFixed(2)}</li>
+                                    <li>Gastos a descontar: -$${parseFloat(summary.expenses_to_deduct).toFixed(2)}</li>
+                                    <li>Adelantos: -$${parseFloat(summary.advances_deducted).toFixed(2)}</li>
+                                    <li>Ajustes: $${parseFloat(summary.adjustments_applied).toFixed(2)}</li>
+                                    <li>Garantía mínima: +$${parseFloat(summary.guaranteed_minimum_applied).toFixed(2)}</li>
+                                </ul>
+                            </div>
+                        </div>
+                    `;
+                    
+                    document.getElementById('payrollDetailContent').innerHTML = detailHtml;
+                    document.getElementById('payrollDetailModal').classList.add('show');
+                } else {
+                    alert('❌ ' + result.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ Error de conexión: ' + error.message);
+            }
+        }
+
+        // Crear ajuste retroactivo
+        document.getElementById('createAdjustmentForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const resultDiv = document.getElementById('adjustmentResult');
+            
+            const data = {
+                origin_period_id: parseInt(document.getElementById('adjustmentPeriod').value),
+                driver_id: parseInt(document.getElementById('adjustmentDriver').value),
+                amount: parseFloat(document.getElementById('adjustmentAmount').value),
+                description: document.getElementById('adjustmentDescription').value,
+                adjustment_type: document.getElementById('adjustmentType').value,
+                created_by: 1 // Temporal
+            };
+
+            try {
+                const response = await apiCall('/api/payroll/adjustments', {
+                    method: 'POST',
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    resultDiv.innerHTML = '<p class="alert alert-success">✅ Ajuste creado correctamente</p>';
+                    e.target.reset();
+                } else {
+                    resultDiv.innerHTML = `<p class="alert alert-error">❌ ${result.message}</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = '<p class="alert alert-error">❌ Error de conexión</p>';
+            }
+        });
+
+        // Cargar choferes para ajustes
+        async function loadDriversForAdjustments() {
+            try {
+                const response = await apiCall('/drivers/');
+                if (response.ok) {
+                    const driversData = await response.json();
+                    const select = document.getElementById('adjustmentDriver');
+                    select.innerHTML = '<option value="">Seleccionar chofer...</option>';
+                    driversData.forEach(d => {
+                        select.innerHTML += `<option value="${d.id}">${d.name} ${d.surname}</option>`;
+                    });
+                }
+            } catch (error) {
+                console.error('Error cargando choferes:', error);
+            }
+        }
+
+        // Cargar choferes para generación de liquidaciones
+        async function loadDriversForPayroll() {
+            try {
+                const response = await apiCall('/drivers/');
+                if (response.ok) {
+                    const driversData = await response.json();
+                    const select = document.getElementById('payrollDrivers');
+                    select.innerHTML = '';
+                    driversData.filter(d => d.active).forEach(d => {
+                        const option = document.createElement('option');
+                        option.value = d.id;
+                        option.textContent = `${d.name} ${d.surname}`;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error cargando choferes:', error);
+                document.getElementById('payrollDrivers').innerHTML = '<option value="">Error al cargar</option>';
+            }
+        }
+
+        // Inicializar datos de liquidación cuando es admin
+        async function initPayrollData() {
+            if (currentUser && currentUser.is_admin) {
+                document.getElementById('payrollTab').classList.remove('hidden');
+                await loadCurrentSettings();
+                await loadPeriodsForDropdowns();
+                await loadDriversForPayroll();
+                await loadDriversForAdjustments();
             }
         }
     </script>

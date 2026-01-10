@@ -15,6 +15,8 @@ class Trip(db.Model):
     load_weight_on_load = db.Column(db.Float)
     load_weight_on_unload = db.Column(db.Float)
     rate_per_ton = db.Column(db.Float)
+    km_rate = db.Column(db.Float)
+    calculation_type = db.Column(db.String(20))  # by_tonnage, by_km, both
     fuel_on_client = db.Column(db.Boolean, default=False)
     fuel_liters = db.Column(db.Float)
     state_id = db.Column(trip_state_enum, nullable=False)
@@ -43,6 +45,8 @@ class Trip(db.Model):
             'load_weight_on_load': self.load_weight_on_load,
             'load_weight_on_unload': self.load_weight_on_unload,
             'rate_per_ton': self.rate_per_ton,
+            'km_rate': self.km_rate,
+            'calculation_type': self.calculation_type,
             'fuel_on_client': self.fuel_on_client,
             'fuel_liters': self.fuel_liters,
             'state_id': self.state_id,

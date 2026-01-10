@@ -38,7 +38,9 @@ def create_app():
         driver_bp, truck_bp, trip_bp, expense_bp,
         advance_payment_bp, app_user_bp, client_bp,
         commission_percentage_bp, driver_truck_bp,
-        km_rate_bp, load_owner_bp, monthly_summary_bp, auth_bp
+        km_rate_bp, load_owner_bp, monthly_summary_bp, auth_bp,
+        payroll_period_bp, payroll_summary_bp, payroll_adjustment_bp,
+        payroll_settings_bp, driver_commission_bp
     )
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(driver_bp)
@@ -53,5 +55,10 @@ def create_app():
     app.register_blueprint(km_rate_bp)
     app.register_blueprint(load_owner_bp)
     app.register_blueprint(monthly_summary_bp)
+    app.register_blueprint(payroll_period_bp)
+    app.register_blueprint(payroll_summary_bp)
+    app.register_blueprint(payroll_adjustment_bp)
+    app.register_blueprint(payroll_settings_bp)
+    app.register_blueprint(driver_commission_bp)
     
     return app

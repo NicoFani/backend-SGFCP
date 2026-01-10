@@ -145,6 +145,15 @@ class TripController:
             
             db.session.commit()
             
+            # Si el viaje se acaba de finalizar, verificar si necesita ajuste retroactivo
+            if 'state_id' in validated_data and validated_data['state_id'] == 'Finalizado':
+                try:
+                    from app.controllers.payroll_adjustment import PayrollAdjustmentController
+                    PayrollAdjustmentController.auto_create_trip_adjustment(trip)
+                except Exception as e:
+                    # No fallar la actualización del viaje si hay error en el ajuste
+                    print(f"Error creando ajuste automático para viaje {trip.id}: {str(e)}")
+            
             return jsonify({
                 'message': 'Viaje actualizado exitosamente',
                 'trip': trip.to_dict()

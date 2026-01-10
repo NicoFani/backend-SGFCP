@@ -126,3 +126,15 @@ trip_drivers (tabla asociativa)
 - ✅ Solo choferes asignados ven sus viajes
 - ✅ Transiciones de estado controladas
 - ✅ Campos limitados por estado del viaje
+
+
+
+
+3. Actualizar `trip_management.html` con nuevos campos en formularios
+✅ Múltiples choferes por viaje - Implementado con checkboxes
+✅ Campos de documento (CTG/Remito) - Con validación de formato
+✅ Descripciones de origen/destino - En formulario de creación y visualización
+✅ Vale de combustible + litros - Con checkbox condicional
+✅ Estados correctos - Pendiente, En curso, Finalizado
+✅ Permisos por estado - Solo permite editar campos según el estado del viaje
+✅ Visualización de viajes - Muestra todos los nuevos campos

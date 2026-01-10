@@ -11,6 +11,12 @@ from .commission_percentage import CommissionPercentage
 from .driver_truck import DriverTruck
 from .km_rate import KmRate
 from .monthly_summary import MonthlySummary
+from .payroll_period import PayrollPeriod
+from .payroll_summary import PayrollSummary
+from .payroll_detail import PayrollDetail
+from .payroll_adjustment import PayrollAdjustment
+from .payroll_settings import PayrollSettings
+from .driver_commission_history import DriverCommissionHistory
 
 # Export all models
 __all__ = [
@@ -26,5 +32,11 @@ __all__ = [
     'CommissionPercentage',
     'DriverTruck',
     'KmRate',
-    'MonthlySummary'
+    'MonthlySummary',
+    'PayrollPeriod',
+    'PayrollSummary',
+    'PayrollDetail',
+    'PayrollAdjustment',
+    'PayrollSettings',
+    'DriverCommissionHistory'
 ]
