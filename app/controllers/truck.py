@@ -90,3 +90,34 @@ class TruckController:
         except SQLAlchemyError as e:
             db.session.rollback()
             return jsonify({'error': 'Error al eliminar camion', 'details': str(e)}), 500
+
+    @staticmethod
+    def get_truck_current_driver(truck_id):
+        """Obtiene el chofer actual asignado a un camion"""
+        try:
+            from ..models.driver_truck import DriverTruck
+            from ..models.driver import Driver
+            
+            truck = Truck.query.get_or_404(truck_id)
+            
+            # Obtener la asignación más reciente
+            driver_truck = DriverTruck.query.filter_by(truck_id=truck_id)\
+                .order_by(DriverTruck.date.desc())\
+                .first()
+            
+            if not driver_truck:
+                return jsonify({'driver': None}), 200
+            
+            # Obtener el conductor
+            driver = Driver.query.get(driver_truck.driver_id)
+            
+            if not driver:
+                return jsonify({'driver': None}), 200
+            
+            return jsonify({
+                'driver': driver.to_dict(),
+                'assignment_date': driver_truck.date.isoformat()
+            }), 200
+            
+        except Exception as e:
+            return jsonify({'error': 'Error al obtener chofer del camión', 'details': str(e)}), 500

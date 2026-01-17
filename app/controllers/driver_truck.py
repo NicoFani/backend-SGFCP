@@ -3,6 +3,7 @@ from flask import jsonify
 from sqlalchemy.exc import SQLAlchemyError
 from marshmallow import ValidationError
 from ..models.driver_truck import DriverTruck
+from ..models.truck import Truck
 from ..models.base import db
 from ..schemas.driver_truck import DriverTruckSchema, DriverTruckUpdateSchema
 
@@ -16,6 +17,32 @@ class DriverTruckController:
             return jsonify([dt.to_dict() for dt in driver_trucks]), 200
         except SQLAlchemyError as e:
             return jsonify({'error': 'Error al obtener asignaciones', 'details': str(e)}), 500
+
+    @staticmethod
+    def get_trucks_by_driver(driver_id):
+        """Obtiene todos los camiones asignados a un conductor (histórico)"""
+        try:
+            # Obtener todas las asignaciones del conductor, ordenadas por fecha descendente
+            assignments = DriverTruck.query.filter_by(driver_id=driver_id).order_by(DriverTruck.date.desc()).all()
+            
+            # Obtener los IDs únicos de camiones (manteniendo el orden)
+            truck_ids_seen = set()
+            truck_ids = []
+            for assignment in assignments:
+                if assignment.truck_id not in truck_ids_seen:
+                    truck_ids.append(assignment.truck_id)
+                    truck_ids_seen.add(assignment.truck_id)
+            
+            # Obtener los detalles de los camiones
+            trucks = []
+            for truck_id in truck_ids:
+                truck = Truck.query.get(truck_id)
+                if truck:
+                    trucks.append(truck.to_dict())
+            
+            return jsonify(trucks), 200
+        except SQLAlchemyError as e:
+            return jsonify({'error': 'Error al obtener camiones del conductor', 'details': str(e)}), 500
 
     @staticmethod
     def get_driver_truck_by_id(driver_truck_id):

@@ -37,3 +37,9 @@ def update_truck(truck_id):
 @admin_required()
 def delete_truck(truck_id):
     return TruckController.delete_truck(truck_id)
+
+# GET current driver for a truck
+@truck_bp.route('/<int:truck_id>/current-driver', methods=['GET'])
+@jwt_required()
+def get_truck_current_driver(truck_id):
+    return TruckController.get_truck_current_driver(truck_id)
