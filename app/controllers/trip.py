@@ -16,8 +16,8 @@ class TripController:
             if is_admin:
                 trips = Trip.query.all()
             else:
-                # Los conductores solo ven sus propios viajes (en los que están asignados)
-                trips = Trip.query.join(Trip.drivers).filter(Driver.id == current_user_id).all()
+                # Los conductores solo ven sus propios viajes
+                trips = Trip.query.filter(Trip.driver_id == current_user_id).all()
             return jsonify([trip.to_dict() for trip in trips]), 200
         except SQLAlchemyError as e:
             return jsonify({'error': 'Error al obtener viajes', 'details': str(e)}), 500
@@ -28,10 +28,9 @@ class TripController:
         try:
             trip = Trip.query.get_or_404(trip_id)
             
-            # Verificar permisos: solo admin o los conductores asignados al viaje
+            # Verificar permisos: solo admin o el conductor asignado al viaje
             if not is_admin:
-                driver_ids = [d.id for d in trip.drivers]
-                if current_user_id not in driver_ids:
+                if current_user_id != trip.driver_id:
                     return jsonify({'error': 'No tienes permisos para ver este viaje'}), 403
             
             return jsonify(trip.to_dict()), 200
@@ -40,29 +39,43 @@ class TripController:
 
     @staticmethod
     def create_trip(data):
-        """Crea un nuevo viaje (solo admin)"""
+        """Crea uno o múltiples viajes (uno por cada chofer seleccionado)"""
         try:
-            # Validar datos
+            # Extraer lista de drivers (puede venir como 'drivers' o 'driver_id')
+            drivers_ids = data.pop('drivers', None)
+            if drivers_ids is None:
+                # Si viene driver_id, convertir a lista
+                driver_id = data.get('driver_id')
+                drivers_ids = [driver_id] if driver_id else []
+            
+            if not drivers_ids:
+                return jsonify({'error': 'Debe especificar al menos un chofer'}), 400
+            
+            # Verificar que los drivers existan
+            drivers = Driver.query.filter(Driver.id.in_(drivers_ids)).all()
+            if len(drivers) != len(drivers_ids):
+                return jsonify({'error': 'Uno o más choferes no existen'}), 400
+            
+            created_trips = []
             schema = TripSchema()
-            validated_data = schema.load(data)
             
-            # Extraer drivers del payload
-            drivers_ids = validated_data.pop('drivers', [])
+            # Crear un viaje por cada chofer
+            for driver in drivers:
+                trip_data = data.copy()
+                trip_data['driver_id'] = driver.id
+                
+                # Validar DESPUÉS de asignar driver_id
+                validated_data = schema.load(trip_data)
+                trip = Trip(**validated_data)
+                
+                db.session.add(trip)
+                created_trips.append(trip)
             
-            # Crear viaje
-            trip = Trip(**validated_data)
-            
-            # Asignar choferes
-            if drivers_ids:
-                drivers = Driver.query.filter(Driver.id.in_(drivers_ids)).all()
-                trip.drivers = drivers
-            
-            db.session.add(trip)
             db.session.commit()
             
             return jsonify({
-                'message': 'Viaje creado exitosamente',
-                'trip': trip.to_dict()
+                'message': f'{len(created_trips)} viaje(s) creado(s) exitosamente',
+                'trips': [trip.to_dict() for trip in created_trips]
             }), 201
             
         except ValidationError as e:
@@ -77,22 +90,33 @@ class TripController:
         try:
             trip = Trip.query.get_or_404(trip_id)
             
-            # Verificar permisos: solo admin o los conductores asignados al viaje
+            # Verificar permisos: solo admin o el conductor asignado al viaje
             if not is_admin:
-                driver_ids = [d.id for d in trip.drivers]
-                if current_user_id not in driver_ids:
+                if current_user_id != trip.driver_id:
                     return jsonify({'error': 'No tienes permisos para actualizar este viaje'}), 403
             
             # Validar datos
             schema = TripUpdateSchema()
             validated_data = schema.load(data)
             
-            # Extraer drivers del payload
-            drivers_ids = validated_data.pop('drivers', None)
-            
             # Si es chofer, solo puede actualizar ciertos campos según el estado
             if not is_admin:
                 if trip.state_id == 'Pendiente':
+                    # Verificar si el chofer está intentando iniciar el viaje (cambio a "En curso")
+                    if 'state_id' in validated_data and validated_data['state_id'] == 'En curso':
+                        # Verificar que el chofer no tenga otro viaje en curso
+                        existing_trip = Trip.query.filter(
+                            Trip.driver_id == trip.driver_id,
+                            Trip.state_id == 'En curso',
+                            Trip.id != trip_id
+                        ).first()
+                        
+                        if existing_trip:
+                            return jsonify({
+                                'error': 'No puedes iniciar un nuevo viaje mientras tienes un viaje en curso',
+                                'details': f'Tienes el viaje #{existing_trip.id} en curso'
+                            }), 400
+                    
                     # Chofer iniciando viaje: puede cargar datos de inicio
                     allowed_fields = [
                         'document_type',            # Tipo de documento (CTG/Remito)
@@ -103,6 +127,8 @@ class TripController:
                         'fuel_on_client',           # Vale de combustible
                         'fuel_liters',              # Litros del vale
                         'state_id',                 # Estado (Pendiente -> En curso)
+                        'load_type_id',             # Tipo de carga
+                        'calculated_per_km',        # Cálculo por km o por viaje
                     ]
                 elif trip.state_id == 'En curso':
                     # Chofer finalizando viaje: puede cargar datos de fin
@@ -137,11 +163,6 @@ class TripController:
             # Actualizar campos
             for field, value in validated_data.items():
                 setattr(trip, field, value)
-            
-            # Actualizar conductores si admin lo especifica
-            if drivers_ids is not None and is_admin:
-                drivers = Driver.query.filter(Driver.id.in_(drivers_ids)).all()
-                trip.drivers = drivers
             
             db.session.commit()
             
@@ -183,7 +204,7 @@ class TripController:
     def get_trips_by_driver(driver_id):
         """Obtiene todos los viajes de un conductor especifico"""
         try:
-            trips = Trip.query.join(Trip.drivers).filter(Driver.id == driver_id).all()
+            trips = Trip.query.filter(Trip.driver_id == driver_id).all()
             return jsonify([trip.to_dict() for trip in trips]), 200
         except SQLAlchemyError as e:
             return jsonify({'error': 'Error al obtener viajes del conductor', 'details': str(e)}), 500

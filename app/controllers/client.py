@@ -101,42 +101,5 @@ class ClientController:
         except SQLAlchemyError as e:
             db.session.rollback()
             return jsonify({'error': 'Error al eliminar cliente', 'details': str(e)}), 500
-
-    @staticmethod
-    def convert_to_load_owner(client_id):
-        """Convierte un cliente en dador de carga"""
-        try:
-            from ..models.trip import Trip
-            from ..models.load_owner import LoadOwner
-            
-            client = Client.query.get_or_404(client_id)
-            
-            # Verificar si tiene viajes activos (no finalizados)
-            active_trips = Trip.query.filter(
-                Trip.client_id == client_id,
-                Trip.state_id != 'Finalizado'
-            ).count()
-            
-            if active_trips > 0:
-                return jsonify({
-                    'error': 'No se puede convertir a dador porque tiene viajes activos',
-                    'details': f'Hay {active_trips} viaje(s) que no están finalizados'
-                }), 400
-            
-            # Crear el nuevo load_owner con el mismo nombre
-            load_owner = LoadOwner(name=client.name)
-            db.session.add(load_owner)
-            
-            # Eliminar el cliente
-            db.session.delete(client)
-            
-            db.session.commit()
-            
-            return jsonify({
-                'message': 'Cliente convertido a dador exitosamente',
-                'load_owner': load_owner.to_dict()
-            }), 200
-            
-        except SQLAlchemyError as e:
             db.session.rollback()
             return jsonify({'error': 'Error al convertir cliente', 'details': str(e)}), 500

@@ -1,4 +1,4 @@
-from flask import Blueprint, request
+from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from ..controllers.driver_truck import DriverTruckController
 from ..utils import admin_required
@@ -23,6 +23,23 @@ def get_driver_trucks_by_driver(driver_id):
         return {'error': 'No tienes permisos para ver esta información'}, 403
     
     return DriverTruckController.get_trucks_by_driver(driver_id)
+
+@driver_truck_bp.route('/driver/<int:driver_id>/current-truck', methods=['GET'])
+@jwt_required()
+def get_current_truck_by_driver(driver_id):
+    """Obtiene el camión actual de un conductor (el más reciente)"""
+    current_user_id = int(get_jwt_identity())
+    is_admin = get_jwt().get('is_admin', False)
+    
+    # Solo admin o el propio conductor
+    if not is_admin and current_user_id != driver_id:
+        return {'error': 'No tienes permisos para ver esta información'}, 403
+    
+    truck = DriverTruckController.get_current_truck_by_driver(driver_id)
+    if truck:
+        return jsonify(truck), 200
+    else:
+        return jsonify({'error': 'No hay camión asignado'}), 404
 
 @driver_truck_bp.route('/<int:driver_truck_id>', methods=['GET'])
 @jwt_required()

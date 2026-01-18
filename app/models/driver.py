@@ -1,4 +1,5 @@
 from .base import db
+from sqlalchemy import desc
 
 class Driver(db.Model):
     __tablename__ = 'driver'
@@ -20,6 +21,21 @@ class Driver(db.Model):
     driver_trucks = db.relationship('DriverTruck', backref='driver', lazy=True)
     monthly_summaries = db.relationship('MonthlySummary', backref='driver', lazy=True)
 
+    def get_current_truck(self):
+        """Obtiene el camión actual del chofer (el más reciente por fecha)"""
+        from .driver_truck import DriverTruck
+        from .truck import Truck
+        
+        # Obtener la asignación más reciente
+        assignment = DriverTruck.query.filter_by(driver_id=self.id).order_by(desc(DriverTruck.date)).first()
+        
+        if not assignment:
+            return None
+        
+        # Obtener el camión
+        truck = Truck.query.get(assignment.truck_id)
+        return truck.to_dict() if truck else None
+
     def to_dict(self):
         driver_dict = {
             'id': self.id,
@@ -40,5 +56,10 @@ class Driver(db.Model):
             driver_dict['name'] = self.user.name
             driver_dict['surname'] = self.user.surname
             driver_dict['email'] = self.user.email
+        
+        # Agregar camión actual
+        current_truck = self.get_current_truck()
+        if current_truck:
+            driver_dict['current_truck'] = current_truck
         
         return driver_dict

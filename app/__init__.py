@@ -36,7 +36,7 @@ def create_app():
     # Register blueprints
     from .routes import (
         driver_bp, truck_bp, trip_bp, expense_bp,
-        advance_payment_bp, app_user_bp, client_bp,
+        advance_payment_bp, app_user_bp, client_bp, load_type_bp,
         commission_percentage_bp, driver_truck_bp,
         km_rate_bp, load_owner_bp, monthly_summary_bp, auth_bp,
         payroll_period_bp, payroll_summary_bp, payroll_adjustment_bp,
@@ -50,6 +50,7 @@ def create_app():
     app.register_blueprint(advance_payment_bp)
     app.register_blueprint(app_user_bp)
     app.register_blueprint(client_bp)
+    app.register_blueprint(load_type_bp)
     app.register_blueprint(commission_percentage_bp)
     app.register_blueprint(driver_truck_bp)
     app.register_blueprint(km_rate_bp)

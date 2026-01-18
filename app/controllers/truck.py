@@ -100,12 +100,22 @@ class TruckController:
             
             truck = Truck.query.get_or_404(truck_id)
             
-            # Obtener la asignación más reciente
+            # Obtener la asignación más reciente para este camión
             driver_truck = DriverTruck.query.filter_by(truck_id=truck_id)\
                 .order_by(DriverTruck.date.desc())\
                 .first()
             
             if not driver_truck:
+                return jsonify({'driver': None}), 200
+            
+            # Verificar que esta asignación sea la más reciente del chofer
+            # (el chofer podría estar asignado a otro camión más recientemente)
+            most_recent_assignment = DriverTruck.query.filter_by(driver_id=driver_truck.driver_id)\
+                .order_by(DriverTruck.date.desc())\
+                .first()
+            
+            # Si la asignación más reciente del chofer NO es este camión, no mostrarlo
+            if most_recent_assignment.truck_id != truck_id:
                 return jsonify({'driver': None}), 200
             
             # Obtener el conductor

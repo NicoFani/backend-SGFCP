@@ -32,9 +32,3 @@ def update_client(client_id):
 @admin_required()
 def delete_client(client_id):
     return ClientController.delete_client(client_id)
-
-@client_bp.route('/<int:client_id>/convert-to-load-owner', methods=['POST'])
-@jwt_required()
-@admin_required()
-def convert_to_load_owner(client_id):
-    return ClientController.convert_to_load_owner(client_id)

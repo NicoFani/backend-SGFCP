@@ -53,8 +53,8 @@ class ExpenseController:
                     trip = Trip.query.get(trip_id)
                     if not trip:
                         return jsonify({'error': 'Viaje no encontrado'}), 404
-                    # Validar que el chofer esté asignado al viaje (relación muchos-a-muchos) y que esté en curso
-                    if not any(d.id == current_user_id for d in trip.drivers):
+                    # Validar que el chofer esté asignado al viaje (relación uno-a-uno) y que esté en curso
+                    if trip.driver_id != current_user_id:
                         return jsonify({'error': 'No puedes crear gastos para viajes no asignados a ti'}), 403
                     if trip.state_id != 'En curso':
                         return jsonify({'error': 'Solo puedes cargar gastos cuando el viaje está en curso'}), 403

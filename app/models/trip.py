@@ -1,4 +1,4 @@
-from .base import db, trip_state_enum, document_type_enum, trip_drivers
+from .base import db, trip_state_enum, document_type_enum
 
 class Trip(db.Model):
     __tablename__ = 'trip'
@@ -14,17 +14,18 @@ class Trip(db.Model):
     end_date = db.Column(db.Date)
     load_weight_on_load = db.Column(db.Float)
     load_weight_on_unload = db.Column(db.Float)
-    rate_per_ton = db.Column(db.Float)
-    km_rate = db.Column(db.Float)
-    calculation_type = db.Column(db.String(20))  # by_tonnage, by_km, both
+    calculated_per_km = db.Column(db.Boolean, nullable=False, default=False)
+    rate = db.Column(db.Float)
     fuel_on_client = db.Column(db.Boolean, default=False)
     fuel_liters = db.Column(db.Float)
     state_id = db.Column(trip_state_enum, nullable=False)
     client_id = db.Column(db.Integer, db.ForeignKey('client.id'), nullable=False)
     load_owner_id = db.Column(db.Integer, db.ForeignKey('load_owner.id'))
+    load_type_id = db.Column(db.Integer, db.ForeignKey('load_type.id'))
+    driver_id = db.Column(db.Integer, db.ForeignKey('driver.id'), nullable=False)
     
-    # Relación muchos-a-muchos con Driver
-    drivers = db.relationship('Driver', secondary=trip_drivers, backref='trips_assigned', lazy=True)
+    # Relación uno-a-uno con Driver
+    driver = db.relationship('Driver', backref='trips', lazy=True)
     
     # Relaciones
     expenses = db.relationship('Expense', backref='trip', lazy=True)
@@ -44,13 +45,15 @@ class Trip(db.Model):
             'end_date': self.end_date.isoformat() if self.end_date else None,
             'load_weight_on_load': self.load_weight_on_load,
             'load_weight_on_unload': self.load_weight_on_unload,
-            'rate_per_ton': self.rate_per_ton,
-            'km_rate': self.km_rate,
-            'calculation_type': self.calculation_type,
+            'calculated_per_km': self.calculated_per_km,
+            'rate': self.rate,
             'fuel_on_client': self.fuel_on_client,
             'fuel_liters': self.fuel_liters,
             'state_id': self.state_id,
             'client_id': self.client_id,
             'load_owner_id': self.load_owner_id,
-            'drivers': [{'id': d.id, 'name': d.user.name, 'surname': d.user.surname} for d in self.drivers]
+            'load_type_id': self.load_type_id,
+            'load_type': self.load_type.to_dict() if self.load_type else None,
+            'driver_id': self.driver_id,
+            'driver': {'id': self.driver.id, 'name': self.driver.user.name, 'surname': self.driver.user.surname} if self.driver else None
         }

@@ -45,6 +45,25 @@ class DriverTruckController:
             return jsonify({'error': 'Error al obtener camiones del conductor', 'details': str(e)}), 500
 
     @staticmethod
+    def get_current_truck_by_driver(driver_id):
+        """Obtiene el camión actual de un conductor (el más reciente por fecha)"""
+        try:
+            # Obtener la asignación más reciente del conductor
+            assignment = DriverTruck.query.filter_by(driver_id=driver_id).order_by(DriverTruck.date.desc()).first()
+            
+            if not assignment:
+                return None
+            
+            # Obtener el camión
+            truck = Truck.query.get(assignment.truck_id)
+            if truck:
+                return truck.to_dict()
+            
+            return None
+        except SQLAlchemyError:
+            return None
+
+    @staticmethod
     def get_driver_truck_by_id(driver_truck_id):
         """Obtiene una asignación por ID"""
         try:

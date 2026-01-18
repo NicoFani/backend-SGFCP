@@ -5,6 +5,7 @@ from .expense import expense_bp
 from .advance_payment import advance_payment_bp
 from .app_user import app_user_bp
 from .client import client_bp
+from .load_type import load_type_bp
 from .commission_percentage import commission_percentage_bp
 from .driver_truck import driver_truck_bp
 from .km_rate import km_rate_bp
@@ -25,6 +26,7 @@ __all__ = [
     'advance_payment_bp',
     'app_user_bp',
     'client_bp',
+    'load_type_bp',
     'commission_percentage_bp',
     'driver_truck_bp',
     'km_rate_bp',

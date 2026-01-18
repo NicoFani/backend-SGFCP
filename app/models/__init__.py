@@ -6,6 +6,7 @@ from .trip import Trip
 from .expense import Expense
 from .client import Client
 from .load_owner import LoadOwner
+from .load_type import LoadType
 from .advance_payment import AdvancePayment
 from .commission_percentage import CommissionPercentage
 from .driver_truck import DriverTruck
@@ -28,6 +29,7 @@ __all__ = [
     'Expense',
     'Client',
     'LoadOwner',
+    'LoadType',
     'AdvancePayment',
     'CommissionPercentage',
     'DriverTruck',
