@@ -31,6 +31,9 @@ class PayrollSummary(db.Model):
     status = db.Column(db.String(20), nullable=False, default='draft')
     error_message = db.Column(db.Text, nullable=True)  # Descripción del error si status = 'error'
     
+    # Indicador de generación automática
+    is_auto_generated = db.Column(db.Boolean, default=False)
+    
     # Exportación
     export_format = db.Column(db.String(10), nullable=True)  # excel, pdf
     export_path = db.Column(db.String(255), nullable=True)

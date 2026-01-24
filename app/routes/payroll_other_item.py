@@ -1,5 +1,7 @@
 """Rutas para gestión de otros conceptos de liquidación."""
+from datetime import date
 from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from marshmallow import ValidationError
 from app.controllers.payroll_other_item import PayrollOtherItemController
 from app.schemas.payroll import PayrollOtherItemSchema
@@ -9,9 +11,11 @@ schema = PayrollOtherItemSchema()
 
 
 @payroll_other_item_bp.route('/payroll-other-items', methods=['POST'])
+@jwt_required()
 def create_other_item():
     """Crear nuevo concepto."""
     try:
+        user_id = get_jwt_identity()
         data = schema.load(request.json)
         item = PayrollOtherItemController.create(
             driver_id=data['driver_id'],
@@ -19,8 +23,8 @@ def create_other_item():
             item_type=data['item_type'],
             description=data['description'],
             amount=data['amount'],
-            date=data['date'],
-            created_by=data['created_by'],
+            date=date.today(),
+            created_by=user_id,
             reference=data.get('reference'),
             receipt_url=data.get('receipt_url')
         )

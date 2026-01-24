@@ -1,48 +1,65 @@
+"""Script para limpiar tablas específicas de la base de datos."""
 from app import db, create_app
-from app.models import (Trip, Expense, AdvancePayment, PayrollSummary, 
-                         PayrollDetail, PayrollSettings, PayrollAdjustment, PayrollPeriod)
+from app.models.payroll_detail import PayrollDetail
+from app.models.payroll_summary import PayrollSummary
+from app.models.payroll_other_item import PayrollOtherItem
+from app.models.expense import Expense
+from app.models.advance_payment import AdvancePayment
+from app.models.trip import Trip
 
 app = create_app()
 app.app_context().push()
 
-# Eliminar en orden (de hijos a padres)
-print('Eliminando registros...')
+print("=" * 60)
+print("LIMPIEZA DE TABLAS - SGFCP")
+print("=" * 60)
+print("\nTablas a limpiar:")
+print("  - payroll_details")
+print("  - payroll_summaries")
+print("  - expense")
+print("  - trip")
+print("  - payroll_other_items")
+print("  - advance_payment")
+print("\n⚠️  Esta operación eliminará TODOS los registros de estas tablas.")
 
-# 1. Payroll details (depende de summaries)
-count = PayrollDetail.query.delete()
-print(f'✓ PayrollDetail: {count} registros')
+confirm = input("\n¿Estás seguro? (escribe 'SI' para confirmar): ")
 
-# 2. Payroll summaries (depende de period, driver)
-count = PayrollSummary.query.delete()
-print(f'✓ PayrollSummary: {count} registros')
+if confirm.strip().upper() != 'SI':
+    print("\n❌ Operación cancelada\n")
+    exit(0)
 
-# 3. Payroll adjustments
-count = PayrollAdjustment.query.delete()
-print(f'✓ PayrollAdjustment: {count} registros')
+print('\n🧹 Iniciando limpieza de tablas...\n')
 
-# 4. Expenses (depende de trip, driver)
-count = Expense.query.delete()
-print(f'✓ Expense: {count} registros')
+# Eliminar en orden (de hijos a padres para evitar errores de FK)
+try:
+    # 1. Payroll details (depende de summaries)
+    count = PayrollDetail.query.delete()
+    print(f'  ✓ payroll_details: {count} registros eliminados')
 
-# 5. Advance payments (depende de driver)
-count = AdvancePayment.query.delete()
-print(f'✓ AdvancePayment: {count} registros')
+    # 2. Payroll summaries (depende de period, driver)
+    count = PayrollSummary.query.delete()
+    print(f'  ✓ payroll_summaries: {count} registros eliminados')
 
-# 6. Trip-drivers (tabla intermedia many-to-many)
-result = db.session.execute(db.text('DELETE FROM trip_drivers'))
-print(f'✓ trip_drivers: {result.rowcount} registros')
+    # 3. Expenses (depende de trip, driver)
+    count = Expense.query.delete()
+    print(f'  ✓ expense: {count} registros eliminados')
 
-# 7. Trips
-count = Trip.query.delete()
-print(f'✓ Trip: {count} registros')
+    # 4. Trips
+    count = Trip.query.delete()
+    print(f'  ✓ trip: {count} registros eliminados')
 
-# 8. Payroll settings
-count = PayrollSettings.query.delete()
-print(f'✓ PayrollSettings: {count} registros')
+    # 5. Payroll other items (depende de period, driver)
+    count = PayrollOtherItem.query.delete()
+    print(f'  ✓ payroll_other_items: {count} registros eliminados')
 
-# 9. Payroll periods
-count = PayrollPeriod.query.delete()
-print(f'✓ PayrollPeriod: {count} registros')
+    # 6. Advance payments (depende de driver)
+    count = AdvancePayment.query.delete()
+    print(f'  ✓ advance_payment: {count} registros eliminados')
 
-db.session.commit()
-print('\n✅ Todas las tablas limpiadas correctamente')
+    db.session.commit()
+    print('\n✅ Limpieza completada exitosamente\n')
+
+except Exception as e:
+    db.session.rollback()
+    print(f'\n❌ Error durante la limpieza: {e}\n')
+    raise

@@ -65,4 +65,9 @@ def create_app():
     app.register_blueprint(minimum_guaranteed_bp)
     app.register_blueprint(payroll_other_item_bp)
     
+    # Iniciar scheduler de tareas programadas
+    with app.app_context():
+        from .scheduler import start_scheduler
+        app.scheduler = start_scheduler(app)
+    
     return app

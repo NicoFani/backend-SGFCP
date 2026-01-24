@@ -168,6 +168,7 @@ class TripController:
             db.session.commit()
             
             # Si el viaje se acaba de finalizar, verificar si necesita ajuste retroactivo
+            # y recalcular resúmenes en "calculation_pending"
             if 'state_id' in validated_data and validated_data['state_id'] == 'Finalizado':
                 try:
                     from app.controllers.payroll_adjustment import PayrollAdjustmentController
@@ -175,6 +176,22 @@ class TripController:
                 except Exception as e:
                     # No fallar la actualización del viaje si hay error en el ajuste
                     print(f"Error creando ajuste automático para viaje {trip.id}: {str(e)}")
+                
+                # Recalcular resúmenes en "calculation_pending" para este chofer
+                try:
+                    from app.scheduler import recalculate_pending_payroll_summaries
+                    from ..models.payroll_period import PayrollPeriod
+                    
+                    # Encontrar el período que contiene este viaje
+                    period = PayrollPeriod.query.filter(
+                        PayrollPeriod.start_date <= trip.start_date,
+                        PayrollPeriod.end_date >= trip.start_date
+                    ).first()
+                    
+                    if period:
+                        recalculate_pending_payroll_summaries(trip.driver_id, period.id)
+                except Exception as e:
+                    print(f"Error recalculando resúmenes automáticos para viaje {trip.id}: {str(e)}")
             
             return jsonify({
                 'message': 'Viaje actualizado exitosamente',

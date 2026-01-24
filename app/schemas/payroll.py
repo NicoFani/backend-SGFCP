@@ -39,6 +39,7 @@ class PayrollSummarySchema(Schema):
         'calculation_pending', 'pending_approval', 'error', 'draft', 'approved'
     ]))
     error_message = fields.Str(allow_none=True, dump_only=True)
+    is_auto_generated = fields.Bool(dump_only=True)
     export_format = fields.Str(dump_only=True)
     export_path = fields.Str(dump_only=True)
     notes = fields.Str(allow_none=True)
@@ -183,7 +184,7 @@ class PayrollOtherItemSchema(Schema):
     )
     description = fields.Str(required=True, validate=validate.Length(min=1, max=500))
     amount = fields.Decimal(as_string=True, required=True, places=2)
-    date = fields.Date(required=True)
+    date = fields.Date(required=False, dump_only=False, allow_none=True)
     reference = fields.Str(allow_none=True, validate=validate.Length(max=255))
     receipt_url = fields.Str(allow_none=True, validate=validate.Length(max=255))
     created_by = fields.Int(dump_only=True)

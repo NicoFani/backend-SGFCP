@@ -53,7 +53,7 @@ class PayrollCalculationController:
                     f"Ya existe un resumen aprobado para el chofer {driver.user.name} {driver.user.surname} en este período"
                 )
             
-            # Eliminar resumen draft/pending/error existente (regenerar)
+            # Eliminar resumen draft/pending/error/calculation_pending existente (regenerar)
             existing = PayrollSummary.query.filter(
                 and_(
                     PayrollSummary.period_id == period_id,
@@ -63,6 +63,11 @@ class PayrollCalculationController:
             ).first()
             
             if existing:
+                # Primero eliminar los detalles asociados
+                PayrollDetail.query.filter_by(summary_id=existing.id).delete()
+                db.session.flush()
+                
+                # Luego eliminar el resumen
                 db.session.delete(existing)
                 db.session.flush()
             
@@ -95,6 +100,7 @@ class PayrollCalculationController:
             driver_commission_percentage=commission_pct,
             driver_minimum_guaranteed=minimum_guaranteed,
             status='draft',  # Se actualizará después
+            is_auto_generated=not is_manual,  # Indicar si fue generado automáticamente
             commission_from_trips=Decimal('0.00'),
             expenses_to_reimburse=Decimal('0.00'),
             expenses_to_deduct=Decimal('0.00'),
@@ -110,6 +116,12 @@ class PayrollCalculationController:
         has_trips_in_progress = PayrollCalculationController._check_driver_trips_in_progress(
             driver.id, period
         )
+        
+        # Para generación automática: si hay viajes en curso, marcar como calculation_pending
+        if not is_manual and has_trips_in_progress:
+            summary.status = 'calculation_pending'
+            summary.error_message = 'Resumen en espera de finalización de viajes en curso'
+            return summary
         
         # 1. Calcular comisión por viajes (validar tarifas)
         commission_result = PayrollCalculationController._calculate_trip_commission(
@@ -168,11 +180,8 @@ class PayrollCalculationController:
         if is_manual:
             summary.status = 'draft'
         else:
-            # Generación automática
-            if has_trips_in_progress:
-                summary.status = 'calculation_pending'
-            else:
-                summary.status = 'pending_approval'
+            # Generación automática: sin viajes en curso y sin errores de tarifa
+            summary.status = 'pending_approval'
         
         return summary
     
@@ -368,16 +377,19 @@ class PayrollCalculationController:
                 # Si paid_by_admin es True, no se hace nada (lo pagó admin)
             
             elif expense.expense_type == 'Combustible':
-                # Combustible sin vale: se reintegra
-                expenses_to_reimburse += amount
-                detail = PayrollDetail(
-                    summary_id=summary.id,
-                    detail_type='expense_reimburse',
-                    expense_id=expense.id,
-                    description=f"Combustible - {expense.fuel_liters}L",
-                    amount=amount
-                )
-                db.session.add(detail)
+                # Combustible: depende de paid_by_admin
+                if expense.paid_by_admin is False:
+                    # Lo pagó el chofer, se reintegra
+                    expenses_to_reimburse += amount
+                    detail = PayrollDetail(
+                        summary_id=summary.id,
+                        detail_type='expense_reimburse',
+                        expense_id=expense.id,
+                        description=f"Combustible - {expense.fuel_liters}L",
+                        amount=amount
+                    )
+                    db.session.add(detail)
+                # Si paid_by_admin es True, no se hace nada (lo pagó admin)
             
             elif expense.expense_type == 'Peaje':
                 # Peaje: depende de paid_by_admin
@@ -395,16 +407,19 @@ class PayrollCalculationController:
                 # Si paid_by_admin es True, no se hace nada (lo pagó admin)
             
             elif expense.expense_type == 'Viáticos':
-                # Viáticos: siempre se reintegran (gastos extraordinarios)
-                expenses_to_reimburse += amount
-                detail = PayrollDetail(
-                    summary_id=summary.id,
-                    detail_type='expense_reimburse',
-                    expense_id=expense.id,
-                    description=f"Viáticos - {expense.description or ''}",
-                    amount=amount
-                )
-                db.session.add(detail)
+                # Viáticos: depende de paid_by_admin
+                if expense.paid_by_admin is False:
+                    # Lo pagó el chofer, se reintegra
+                    expenses_to_reimburse += amount
+                    detail = PayrollDetail(
+                        summary_id=summary.id,
+                        detail_type='expense_reimburse',
+                        expense_id=expense.id,
+                        description=f"Viáticos - {expense.description or ''}",
+                        amount=amount
+                    )
+                    db.session.add(detail)
+                # Si paid_by_admin es True, no se hace nada (lo pagó admin)
         
         return expenses_to_reimburse, expenses_to_deduct
     
@@ -608,3 +623,138 @@ class PayrollCalculationController:
         query = query.order_by(PayrollSummary.created_at.desc())
         
         return query.paginate(page=page, per_page=per_page, error_out=False)
+
+    @staticmethod
+    def recalculate_summary(summary_id):
+        """
+        Recalcular un resumen existente sin cambiar su estado base.
+        
+        Útil cuando:
+        - Se toca el botón "Recalcular resumen" manualmente
+        - Se finaliza un viaje y necesita recalcularse un resumen en 'calculation_pending'
+        
+        Args:
+            summary_id: ID del resumen a recalcular
+        
+        Returns:
+            Resumen recalculado
+        """
+        summary = PayrollSummary.query.get(summary_id)
+        if not summary:
+            raise ValueError(f"Resumen {summary_id} no encontrado")
+        
+        # No permitir recalcular resúmenes aprobados
+        if summary.status == 'approved':
+            raise ValueError("No se puede recalcular un resumen aprobado")
+        
+        # Obtener período y chofer
+        period = PayrollPeriod.query.get(summary.period_id)
+        driver = Driver.query.get(summary.driver_id)
+        
+        # Guardar el estado actual para determinar si es automático o manual
+        is_manual = not summary.is_auto_generated
+        
+        # Limpiar detalles existentes para recalcular
+        PayrollDetail.query.filter_by(summary_id=summary.id).delete()
+        db.session.flush()
+        
+        # Obtener parámetros nuevamente
+        commission_pct = PayrollCalculationController._get_driver_commission(
+            driver.id, period.end_date
+        )
+        minimum_guaranteed = PayrollCalculationController._get_minimum_guaranteed(
+            driver.id, period.end_date
+        )
+        
+        # Actualizar parámetros
+        summary.driver_commission_percentage = commission_pct
+        summary.driver_minimum_guaranteed = minimum_guaranteed
+        summary.error_message = None  # Limpiar mensaje de error previo
+        
+        # Verificar si hay viajes en curso
+        has_trips_in_progress = PayrollCalculationController._check_driver_trips_in_progress(
+            driver.id, period
+        )
+        
+        # Para resúmenes automáticos en recálculo: si hay viajes en curso, mantener como calculation_pending
+        if summary.is_auto_generated and has_trips_in_progress:
+            summary.status = 'calculation_pending'
+            summary.error_message = 'Resumen en espera de finalización de viajes en curso'
+            summary.commission_from_trips = Decimal('0.00')
+            summary.expenses_to_reimburse = Decimal('0.00')
+            summary.expenses_to_deduct = Decimal('0.00')
+            summary.guaranteed_minimum_applied = Decimal('0.00')
+            summary.advances_deducted = Decimal('0.00')
+            summary.other_items_total = Decimal('0.00')
+            summary.total_amount = Decimal('0.00')
+            db.session.commit()
+            return summary
+        
+        # 1. Calcular comisión por viajes (validar tarifas)
+        commission_result = PayrollCalculationController._calculate_trip_commission(
+            summary, period, driver, commission_pct
+        )
+        
+        if commission_result['has_error']:
+            summary.status = 'error'
+            summary.error_message = commission_result['error_message']
+            summary.commission_from_trips = Decimal('0.00')
+            summary.expenses_to_reimburse = Decimal('0.00')
+            summary.expenses_to_deduct = Decimal('0.00')
+            summary.guaranteed_minimum_applied = Decimal('0.00')
+            summary.advances_deducted = Decimal('0.00')
+            summary.other_items_total = Decimal('0.00')
+            summary.total_amount = Decimal('0.00')
+            db.session.commit()
+            return summary
+        
+        commission_from_trips = commission_result['commission']
+        
+        # 2. Calcular gastos
+        expenses_result = PayrollCalculationController._calculate_expenses(summary, period, driver)
+        expenses_to_reimburse = expenses_result[0]
+        expenses_to_deduct = expenses_result[1]
+        
+        # 3. Calcular adelantos
+        advances_deducted = PayrollCalculationController._calculate_advances(
+            summary, period, driver
+        )
+        
+        # 4. Calcular otros conceptos
+        other_items_total = PayrollCalculationController._calculate_other_items(
+            summary, period, driver
+        )
+        
+        # 5. Calcular mínimo garantizado
+        guaranteed_minimum_applied = Decimal('0.00')
+        if commission_from_trips < minimum_guaranteed:
+            guaranteed_minimum_applied = minimum_guaranteed - commission_from_trips
+        
+        # 6. Calcular total final
+        total_amount = (
+            commission_from_trips +
+            expenses_to_reimburse +
+            guaranteed_minimum_applied +
+            other_items_total -
+            expenses_to_deduct -
+            advances_deducted
+        )
+        
+        # Actualizar totales
+        summary.commission_from_trips = commission_from_trips
+        summary.expenses_to_reimburse = expenses_to_reimburse
+        summary.expenses_to_deduct = expenses_to_deduct
+        summary.guaranteed_minimum_applied = guaranteed_minimum_applied
+        summary.advances_deducted = advances_deducted
+        summary.other_items_total = other_items_total
+        summary.total_amount = total_amount
+        
+        # Determinar estado final (mantener el base y solo cambiar si hay error)
+        if is_manual:
+            summary.status = 'draft'
+        else:
+            # Automático: sin errores y sin viajes en curso = pending_approval
+            summary.status = 'pending_approval'
+        
+        db.session.commit()
+        return summary

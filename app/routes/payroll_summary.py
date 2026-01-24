@@ -24,8 +24,27 @@ def generate_summaries():
     """
     Generar resúmenes de liquidación.
     
-    Genera resúmenes para todos los viajes FINALIZADOS que iniciaron en el período.
-    Los viajes en curso se incluirán cuando se finalicen (estado calculation_pending).
+    Tipos de generación:
+    1. MANUAL (is_manual=True):
+       - Genera resúmenes para todos los viajes FINALIZADOS del período
+       - Ignora viajes en curso
+       - Estado inicial: 'draft'
+    
+    2. AUTOMÁTICA (is_manual=False):
+       - Se ejecuta el último día del período automáticamente
+       - Valida si hay viajes en curso:
+         • Si hay viajes en curso → estado 'calculation_pending' (recalculará cuando finalicen)
+         • Si no hay viajes en curso → procede con el cálculo
+       - Valida que todos los viajes tengan tarifa
+         • Si algún viaje no tiene tarifa → estado 'error'
+         • Si todo OK → estado 'pending_approval'
+    
+    Payload:
+    {
+        "period_id": int,
+        "driver_ids": [int, ...] (opcional, si no se especifica calcula todos los activos),
+        "is_manual": boolean (por defecto false)
+    }
     """
     try:
         data = generate_schema.load(request.json)
@@ -46,6 +65,9 @@ def generate_summaries():
     except ValueError as e:
         return jsonify({'success': False, 'message': str(e)}), 400
     except Exception as e:
+        import traceback
+        print(f"ERROR generando resúmenes: {e}")
+        print(traceback.format_exc())
         return jsonify({'success': False, 'message': f'Error interno: {str(e)}'}), 500
 
 
@@ -139,14 +161,32 @@ def approve_summary(summary_id):
 def recalculate_summary(summary_id):
     """
     Recalcular un resumen existente.
-    El resumen actual pasa a 'draft' y se genera uno nuevo 'pending_approval'.
+    
+    Útil cuando:
+    - Se toca el botón "Recalcular resumen" manualmente
+    - Se finaliza un viaje y necesita recalcularse un resumen en 'calculation_pending'
+    
+    Devuelve el resumen recalculado con todos sus detalles actualizados.
     """
     try:
-        new_summary = PayrollCalculationController.recalculate_summary(summary_id)
+        # Recalcular el resumen
+        recalculated = PayrollCalculationController.recalculate_summary(summary_id)
+        
+        # Obtener detalles actualizados
+        summary, details = PayrollCalculationController.get_summary_details(summary_id)
+        
+        # Serializar summary y agregar datos adicionales
+        summary_dict = summary_schema.dump(summary)
+        summary_dict['period_month'] = summary.period.month
+        summary_dict['period_year'] = summary.period.year
+        summary_dict['driver_name'] = f"{summary.driver.user.name} {summary.driver.user.surname}"
         
         return jsonify({
             'success': True,
-            'data': summary_schema.dump(new_summary),
+            'data': {
+                'summary': summary_dict,
+                'details': details_schema.dump(details)
+            },
             'message': 'Resumen recalculado exitosamente'
         }), 200
     except ValueError as e:
