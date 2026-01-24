@@ -1,4 +1,4 @@
-from .base import db, expense_type_enum, toll_type_enum, toll_paid_by_enum
+from .base import db, expense_type_enum, toll_type_enum
 
 class Expense(db.Model):
     __tablename__ = 'expense'
@@ -14,7 +14,8 @@ class Expense(db.Model):
     repair_type = db.Column(db.String(50))
     fuel_liters = db.Column(db.Float)
     toll_type = db.Column(toll_type_enum)
-    toll_paid_by = db.Column(toll_paid_by_enum)
+    # Campo booleano para indicar si pagó administración (aplica a Reparaciones y Peajes)
+    paid_by_admin = db.Column(db.Boolean, nullable=True)
     toll_port_fee_name = db.Column(db.String(75))
 
     def to_dict(self):
@@ -31,6 +32,6 @@ class Expense(db.Model):
             'repair_type': self.repair_type,
             'fuel_liters': self.fuel_liters,
             'toll_type': self.toll_type,
-            'toll_paid_by': self.toll_paid_by,
+            'paid_by_admin': self.paid_by_admin,
             'toll_port_fee_name': self.toll_port_fee_name
         }

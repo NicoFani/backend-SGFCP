@@ -17,6 +17,8 @@ from .payroll_summary import payroll_summary_bp
 from .payroll_adjustment import payroll_adjustment_bp
 from .payroll_settings import payroll_settings_bp
 from .driver_commission import driver_commission_bp
+from .minimum_guaranteed import minimum_guaranteed_bp
+from .payroll_other_item import payroll_other_item_bp
 
 __all__ = [
     'driver_bp',
@@ -37,5 +39,7 @@ __all__ = [
     'payroll_summary_bp',
     'payroll_adjustment_bp',
     'payroll_settings_bp',
-    'driver_commission_bp'
+    'driver_commission_bp',
+    'minimum_guaranteed_bp',
+    'payroll_other_item_bp'
 ]

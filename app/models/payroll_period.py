@@ -13,8 +13,6 @@ class PayrollPeriod(db.Model):
     month = db.Column(db.Integer, nullable=False)  # 1-12
     start_date = db.Column(db.Date, nullable=False)
     end_date = db.Column(db.Date, nullable=False)
-    status = db.Column(db.String(20), nullable=False, default='open')  # open, closed, with_adjustments
-    actual_close_date = db.Column(db.DateTime, nullable=True)  # Fecha real de cierre (puede posponerse)
     has_trips_in_progress = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

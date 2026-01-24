@@ -9,7 +9,6 @@ class Driver(db.Model):
     phone_number = db.Column(db.String(20), nullable=False)
     cbu = db.Column(db.String(22), nullable=False)
     active = db.Column(db.Boolean, nullable=False)
-    commission = db.Column(db.Float, nullable=False)
     enrollment_date = db.Column(db.Date, nullable=False)
     termination_date = db.Column(db.Date)
     driver_license_due_date = db.Column(db.Date, nullable=False)
@@ -44,7 +43,6 @@ class Driver(db.Model):
             'phone_number': self.phone_number,
             'cbu': self.cbu,
             'active': self.active,
-            'commission': self.commission,
             'enrollment_date': self.enrollment_date.isoformat() if self.enrollment_date else None,
             'termination_date': self.termination_date.isoformat() if self.termination_date else None,
             'driver_license_due_date': self.driver_license_due_date.isoformat() if self.driver_license_due_date else None,

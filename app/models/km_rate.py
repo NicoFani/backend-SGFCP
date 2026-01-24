@@ -1,3 +1,5 @@
+"""DEPRECATED: Este modelo ya no se usa.
+La tarifa ahora se carga directamente en cada viaje (campo 'rate')."""
 from .base import db
 
 class KmRate(db.Model):

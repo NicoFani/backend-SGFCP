@@ -129,6 +129,7 @@ class TripController:
                         'state_id',                 # Estado (Pendiente -> En curso)
                         'load_type_id',             # Tipo de carga
                         'calculated_per_km',        # Cálculo por km o por viaje
+                        'rate',                     # Tarifa del viaje
                     ]
                 elif trip.state_id == 'En curso':
                     # Chofer finalizando viaje: puede cargar datos de fin

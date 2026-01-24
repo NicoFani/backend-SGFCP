@@ -10,8 +10,6 @@ class PayrollPeriodSchema(Schema):
     month = fields.Int(required=True, validate=validate.Range(min=1, max=12))
     start_date = fields.Date(required=True)
     end_date = fields.Date(required=True)
-    status = fields.Str(dump_only=True)
-    actual_close_date = fields.DateTime(dump_only=True)
     has_trips_in_progress = fields.Bool(dump_only=True)
     created_at = fields.DateTime(dump_only=True)
     updated_at = fields.DateTime(dump_only=True)
@@ -28,19 +26,19 @@ class PayrollSummarySchema(Schema):
     id = fields.Int(dump_only=True)
     period_id = fields.Int(required=True)
     driver_id = fields.Int(required=True)
-    calculation_type = fields.Str(
-        required=True,
-        validate=validate.OneOf(['by_tonnage', 'by_km', 'both'])
-    )
     driver_commission_percentage = fields.Decimal(as_string=True, dump_only=True)
+    driver_minimum_guaranteed = fields.Decimal(as_string=True, dump_only=True)
     commission_from_trips = fields.Decimal(as_string=True, dump_only=True)
     expenses_to_reimburse = fields.Decimal(as_string=True, dump_only=True)
     expenses_to_deduct = fields.Decimal(as_string=True, dump_only=True)
     guaranteed_minimum_applied = fields.Decimal(as_string=True, dump_only=True)
     advances_deducted = fields.Decimal(as_string=True, dump_only=True)
-    adjustments_applied = fields.Decimal(as_string=True, dump_only=True)
+    other_items_total = fields.Decimal(as_string=True, dump_only=True)
     total_amount = fields.Decimal(as_string=True, dump_only=True)
-    status = fields.Str(dump_only=True)
+    status = fields.Str(dump_only=True, validate=validate.OneOf([
+        'calculation_pending', 'pending_approval', 'error', 'draft', 'approved'
+    ]))
+    error_message = fields.Str(allow_none=True, dump_only=True)
     export_format = fields.Str(dump_only=True)
     export_path = fields.Str(dump_only=True)
     notes = fields.Str(allow_none=True)
@@ -57,14 +55,11 @@ class GeneratePayrollSchema(Schema):
     Schema para generación de liquidaciones.
     
     Genera resúmenes para viajes finalizados. Los viajes en curso se incluirán
-    automáticamente cuando se finalicen (como ajustes retroactivos).
+    automáticamente cuando se finalicen.
     """
     period_id = fields.Int(required=True)
     driver_ids = fields.List(fields.Int(), allow_none=True)  # None = todos los choferes
-    calculation_type = fields.Str(
-        required=True,
-        validate=validate.OneOf(['by_tonnage', 'by_km', 'both'])
-    )
+    is_manual = fields.Bool(missing=False)  # True si es generación manual
 
 
 class PayrollDetailSchema(Schema):
@@ -160,3 +155,42 @@ class ClosePeriodSchema(Schema):
     """Schema para cerrar período."""
     period_id = fields.Int(required=True)
     force = fields.Bool(missing=False)  # Forzar cierre aunque haya viajes en curso
+
+
+class MinimumGuaranteedHistorySchema(Schema):
+    """Schema para histórico de mínimo garantizado."""
+    id = fields.Int(dump_only=True)
+    driver_id = fields.Int(required=True)
+    minimum_guaranteed = fields.Decimal(
+        as_string=True,
+        required=True,
+        places=2,
+        validate=validate.Range(min=0)
+    )
+    effective_from = fields.DateTime(required=True)
+    effective_until = fields.DateTime(allow_none=True, dump_only=True)
+    created_at = fields.DateTime(dump_only=True)
+
+
+class PayrollOtherItemSchema(Schema):
+    """Schema para otros conceptos de liquidación."""
+    id = fields.Int(dump_only=True)
+    driver_id = fields.Int(required=True)
+    period_id = fields.Int(required=True)
+    item_type = fields.Str(
+        required=True,
+        validate=validate.OneOf(['adjustment', 'bonus', 'extra_charge', 'fine_without_trip'])
+    )
+    description = fields.Str(required=True, validate=validate.Length(min=1, max=500))
+    amount = fields.Decimal(as_string=True, required=True, places=2)
+    date = fields.Date(required=True)
+    reference = fields.Str(allow_none=True, validate=validate.Length(max=255))
+    receipt_url = fields.Str(allow_none=True, validate=validate.Length(max=255))
+    created_by = fields.Int(dump_only=True)
+    created_at = fields.DateTime(dump_only=True)
+    updated_at = fields.DateTime(dump_only=True)
+
+
+class RecalculateSummarySchema(Schema):
+    """Schema para recalcular resumen."""
+    summary_id = fields.Int(required=True)

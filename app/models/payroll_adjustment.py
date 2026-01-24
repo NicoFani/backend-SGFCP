@@ -1,4 +1,5 @@
-"""Modelo para ajustes retroactivos de liquidación."""
+"""DEPRECATED: Este modelo ya no se usa.
+Ahora se usa PayrollOtherItem para ajustes, bonificaciones, cargos extra y multas sin viaje."""
 from datetime import datetime
 from app.models.base import db
 

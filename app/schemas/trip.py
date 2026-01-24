@@ -21,6 +21,7 @@ class TripSchema(Schema):
     load_owner_id = fields.Integer(allow_none=True)
     load_type_id = fields.Integer(allow_none=True)
     driver_id = fields.Integer(required=True)
+    client_advance_payment = fields.Float(allow_none=True, validate=validate.Range(min=0))
 
     @validates('document_number')
     def validate_document_number(self, value):

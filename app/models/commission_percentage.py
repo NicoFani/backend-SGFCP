@@ -1,3 +1,5 @@
+"""DEPRECATED: Este modelo ya no se usa. 
+La comisión ahora se maneja por chofer en DriverCommissionHistory."""
 from .base import db
 
 class CommissionPercentage(db.Model):

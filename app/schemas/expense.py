@@ -13,7 +13,7 @@ class ExpenseSchema(Schema):
     repair_type = fields.String(validate=validate.Length(max=50))
     fuel_liters = fields.Float(validate=validate.Range(min=0))
     toll_type = fields.String(validate=validate.OneOf(['Peaje de ruta', 'Tasa portuaria', 'Derecho de Ingreso a establecimiento']))
-    toll_paid_by = fields.String(validate=validate.OneOf(['Contador', 'Chofer']))
+    paid_by_admin = fields.Boolean(allow_none=True)  # Para Reparaciones y Peajes
     toll_port_fee_name = fields.String(validate=validate.Length(max=75))
 
 class ExpenseUpdateSchema(Schema):
@@ -28,5 +28,5 @@ class ExpenseUpdateSchema(Schema):
     repair_type = fields.String(validate=validate.Length(max=50))
     fuel_liters = fields.Float(validate=validate.Range(min=0))
     toll_type = fields.String(validate=validate.OneOf(['Peaje de ruta', 'Tasa portuaria', 'Derecho de Ingreso a establecimiento']))
-    toll_paid_by = fields.String(validate=validate.OneOf(['Contador', 'Chofer']))
+    paid_by_admin = fields.Boolean(allow_none=True)  # Para Reparaciones y Peajes
     toll_port_fee_name = fields.String(validate=validate.Length(max=75))

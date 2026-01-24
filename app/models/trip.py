@@ -23,6 +23,7 @@ class Trip(db.Model):
     load_owner_id = db.Column(db.Integer, db.ForeignKey('load_owner.id'))
     load_type_id = db.Column(db.Integer, db.ForeignKey('load_type.id'))
     driver_id = db.Column(db.Integer, db.ForeignKey('driver.id'), nullable=False)
+    client_advance_payment = db.Column(db.Float, default=0.0)
     
     # Relación uno-a-uno con Driver
     driver = db.relationship('Driver', backref='trips', lazy=True)
@@ -49,6 +50,7 @@ class Trip(db.Model):
             'rate': self.rate,
             'fuel_on_client': self.fuel_on_client,
             'fuel_liters': self.fuel_liters,
+            'client_advance_payment': self.client_advance_payment,
             'state_id': self.state_id,
             'client_id': self.client_id,
             'load_owner_id': self.load_owner_id,

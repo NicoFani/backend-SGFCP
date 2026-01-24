@@ -1,3 +1,5 @@
+"""DEPRECATED: Este modelo ya no se usa.
+Ahora se usa PayrollSummary para los resúmenes de liquidación."""
 from .base import db, calculation_method_enum
 
 class MonthlySummary(db.Model):
