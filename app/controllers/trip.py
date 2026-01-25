@@ -96,7 +96,9 @@ class TripController:
                     return jsonify({'error': 'No tienes permisos para actualizar este viaje'}), 403
             
             # Validar datos
+            # Pasar el peso de carga actual como contexto para validar el peso de descarga
             schema = TripUpdateSchema()
+            schema.context = {'load_weight_on_load': trip.load_weight_on_load}
             validated_data = schema.load(data)
             
             # Si es chofer, solo puede actualizar ciertos campos según el estado

@@ -1,4 +1,5 @@
 from marshmallow import Schema, fields, validate, validates, ValidationError
+from datetime import date
 
 class TripSchema(Schema):
     origin = fields.String(required=True, validate=validate.Length(max=100))
@@ -22,6 +23,20 @@ class TripSchema(Schema):
     load_type_id = fields.Integer(allow_none=True)
     driver_id = fields.Integer(required=True)
     client_advance_payment = fields.Float(allow_none=True, validate=validate.Range(min=0))
+
+    @validates('start_date')
+    def validate_start_date(self, value):
+        """Valida que la fecha de inicio no sea anterior a la fecha actual"""
+        if value and value < date.today():
+            raise ValidationError('La fecha de inicio no puede ser anterior al día actual')
+
+    @validates('load_weight_on_unload')
+    def validate_unload_weight(self, value):
+        """Valida que el peso de descarga no sea mayor al peso de carga"""
+        if value is not None and 'load_weight_on_load' in self.context:
+            load_weight = self.context['load_weight_on_load']
+            if load_weight is not None and value > load_weight:
+                raise ValidationError('El peso de descarga no puede ser mayor al peso de carga')
 
     @validates('document_number')
     def validate_document_number(self, value):

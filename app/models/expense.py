@@ -23,7 +23,7 @@ class Expense(db.Model):
             'id': self.id,
             'trip_id': self.trip_id,
             'driver_id': self.driver_id,
-            'expense_type': self.expense_type,
+            'expense_type': str(self.expense_type) if self.expense_type else None,
             'date': self.date.isoformat() if self.date else None,
             'amount': self.amount,
             'description': self.description,
@@ -31,7 +31,7 @@ class Expense(db.Model):
             'fine_municipality': self.fine_municipality,
             'repair_type': self.repair_type,
             'fuel_liters': self.fuel_liters,
-            'toll_type': self.toll_type,
+            'toll_type': str(self.toll_type) if self.toll_type else None,
             'paid_by_admin': self.paid_by_admin,
             'toll_port_fee_name': self.toll_port_fee_name
         }

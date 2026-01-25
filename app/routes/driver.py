@@ -33,6 +33,13 @@ def get_driver(driver_id):
 def create_driver():
     return DriverController.create_driver(request.get_json())
 
+# CREATE driver completo (usuario + driver) - solo admin
+@driver_bp.route('/complete', methods=['POST'])
+@jwt_required()
+@admin_required()
+def create_driver_complete():
+    return DriverController.create_driver_complete(request.get_json())
+
 # UPDATE driver (solo el propio conductor o admin)
 @driver_bp.route('/<int:driver_id>', methods=['PUT'])
 @jwt_required()
@@ -45,6 +52,13 @@ def update_driver(driver_id):
         return {'error': 'No tienes permisos para actualizar este conductor'}, 403
     
     return DriverController.update_driver(driver_id, request.get_json())
+
+# UPDATE driver basic data (datos básicos) - solo admin
+@driver_bp.route('/<int:driver_id>/basic', methods=['PUT'])
+@jwt_required()
+@admin_required()
+def update_driver_basic(driver_id):
+    return DriverController.update_driver_basic_data(driver_id, request.get_json())
 
 # DELETE driver (solo admin)
 @driver_bp.route('/<int:driver_id>', methods=['DELETE'])

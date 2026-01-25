@@ -31,6 +31,118 @@ class DriverController:
             return jsonify({'error': 'Conductor no encontrado'}), 404
 
     @staticmethod
+    def create_driver_complete(data):
+        """Crea un usuario y conductor en un solo paso"""
+        try:
+            from ..models.app_user import AppUser
+            from app import bcrypt
+            import secrets
+            import string
+            
+            # Validar datos requeridos
+            if not data.get('cuil'):
+                return jsonify({'error': 'CUIL es requerido'}), 400
+            if not data.get('cbu'):
+                return jsonify({'error': 'CVU/CBU es requerido'}), 400
+            if not data.get('phone_number'):
+                return jsonify({'error': 'Número de teléfono es requerido'}), 400
+            
+            # Generar contraseña temporal
+            password_chars = string.ascii_letters + string.digits
+            temp_password = ''.join(secrets.choice(password_chars) for _ in range(12))
+            
+            # Crear usuario
+            user = AppUser(
+                name=data.get('name'),
+                surname=data.get('surname'),
+                email=data.get('email'),
+                password_hash=bcrypt.generate_password_hash(temp_password).decode('utf-8'),
+                is_admin=False,
+                is_active=True
+            )
+            db.session.add(user)
+            db.session.flush()  # Obtener el ID del usuario
+            
+            # Calcular DNI desde CUIL (quitando primer y últimos dígitos)
+            cuil = data.get('cuil', '').replace('-', '')
+            if len(cuil) != 11:
+                db.session.rollback()
+                return jsonify({'error': 'CUIL debe tener 11 dígitos'}), 400
+            dni = int(cuil[2:10])
+            
+            # Crear driver con fechas por defecto (1 año desde hoy)
+            from datetime import date, timedelta
+            today = date.today()
+            one_year_later = today + timedelta(days=365)
+            
+            driver = Driver(
+                id=user.id,
+                dni=dni,
+                cuil=cuil,
+                phone_number=data.get('phone_number'),
+                cbu=data.get('cbu'),
+                active=True,
+                enrollment_date=today,
+                driver_license_due_date=one_year_later,
+                medical_exam_due_date=one_year_later
+            )
+            db.session.add(driver)
+            db.session.commit()
+            
+            return jsonify({
+                'message': 'Conductor creado exitosamente',
+                'driver': driver.to_dict(),
+                'temp_password': temp_password  # Enviar para que admin se la pase al chofer
+            }), 201
+            
+        except ValidationError as e:
+            db.session.rollback()
+            return jsonify({'error': 'Datos invalidos', 'details': e.messages}), 400
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            return jsonify({'error': 'Error al crear conductor', 'details': str(e)}), 500
+
+    @staticmethod
+    def update_driver_basic_data(driver_id, data):
+        """Actualiza datos básicos del conductor y su usuario asociado"""
+        try:
+            driver = Driver.query.get_or_404(driver_id)
+            from ..models.app_user import AppUser
+            user = AppUser.query.get(driver_id)
+            
+            if not user:
+                return jsonify({'error': 'Usuario no encontrado'}), 404
+            
+            # Actualizar datos del usuario
+            if 'name' in data:
+                user.name = data['name']
+            if 'surname' in data:
+                user.surname = data['surname']
+            
+            # Actualizar datos del driver
+            if 'cuil' in data:
+                cuil = data['cuil'].replace('-', '')
+                driver.cuil = cuil
+                # Actualizar DNI desde CUIL
+                driver.dni = int(cuil[2:10]) if len(cuil) == 11 else driver.dni
+            
+            if 'cbu' in data:
+                driver.cbu = data['cbu']
+            if 'phone_number' in data:
+                driver.phone_number = data['phone_number']
+            
+            db.session.commit()
+            
+            return jsonify({
+                'message': 'Datos actualizados exitosamente',
+                'driver': driver.to_dict()
+            }), 200
+            
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            return jsonify({'error': 'Error al actualizar datos', 'details': str(e)}), 500
+
+    @staticmethod
     def create_driver(data):
         """Crea un nuevo conductor"""
         try:
