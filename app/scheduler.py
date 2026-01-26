@@ -20,7 +20,10 @@ def generate_auto_payroll_summaries():
     - Si todo está OK → estado 'pending_approval'
     """
     try:
-        today = datetime.now().date()
+        # SIMULACIÓN: Cambiado para probar generación automática
+        # today = datetime.now().date()
+        from datetime import date
+        today = date(2026, 1, 31)  # Simular que es el último día de enero
         
         # Buscar períodos que terminan hoy
         periods = PayrollPeriod.query.filter(
@@ -138,17 +141,27 @@ def start_scheduler(app):
     scheduler = BackgroundScheduler()
     
     # Configurar la generación automática de resúmenes
-    # Se ejecuta el último día de cada mes a las 23:59
+    # SIMULACIÓN: Ejecutar en 30 segundos para probar
+    # Producción: Se ejecuta el último día de cada mes a las 23:59
     scheduler.add_job(
         func=generate_auto_payroll_summaries,
-        trigger='cron',
-        day='last',  # Último día del mes
-        hour=23,
-        minute=59,
+        trigger='date',  # Ejecutar una vez en una fecha específica
+        run_date=datetime.now() + timedelta(seconds=30),  # En 30 segundos
         id='generate_auto_payroll_summaries',
-        name='Generar resúmenes automáticos de liquidación',
+        name='Generar resúmenes automáticos de liquidación (SIMULACIÓN)',
         replace_existing=True
     )
+    # Original (descomentar para producción):
+    # scheduler.add_job(
+    #     func=generate_auto_payroll_summaries,
+    #     trigger='cron',
+    #     day='last',  # Último día del mes
+    #     hour=23,
+    #     minute=59,
+    #     id='generate_auto_payroll_summaries',
+    #     name='Generar resúmenes automáticos de liquidación',
+    #     replace_existing=True
+    # )
     
     try:
         scheduler.start()

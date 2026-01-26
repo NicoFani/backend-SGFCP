@@ -651,7 +651,8 @@ class PayrollCalculationController:
         period = PayrollPeriod.query.get(summary.period_id)
         driver = Driver.query.get(summary.driver_id)
         
-        # Guardar el estado actual para determinar si es automático o manual
+        # Guardar el estado actual para determinar el nuevo estado después del recálculo
+        previous_status = summary.status
         is_manual = not summary.is_auto_generated
         
         # Limpiar detalles existentes para recalcular
@@ -749,12 +750,22 @@ class PayrollCalculationController:
         summary.other_items_total = other_items_total
         summary.total_amount = total_amount
         
-        # Determinar estado final (mantener el base y solo cambiar si hay error)
-        if is_manual:
+        # Determinar estado final basado en el estado previo
+        # Reglas:
+        # 1. Si estaba en 'error' y ahora se recalcula correctamente → 'pending_approval'
+        # 2. Si estaba en 'pending_approval' → mantener 'pending_approval'
+        # 3. Si estaba en 'calculation_pending' → 'pending_approval'
+        # 4. Si estaba en 'draft' → mantener 'draft'
+        
+        if previous_status in ['error', 'pending_approval', 'calculation_pending']:
+            # Error corregido, pending o calculation_pending → pending_approval
+            summary.status = 'pending_approval'
+        elif previous_status == 'draft':
+            # Si estaba en draft, mantener draft
             summary.status = 'draft'
         else:
-            # Automático: sin errores y sin viajes en curso = pending_approval
-            summary.status = 'pending_approval'
+            # Caso por defecto (no debería llegar aquí normalmente)
+            summary.status = 'pending_approval' if summary.is_auto_generated else 'draft'
         
         db.session.commit()
         return summary
