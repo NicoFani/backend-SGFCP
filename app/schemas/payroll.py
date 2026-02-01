@@ -132,7 +132,7 @@ class DriverCommissionHistorySchema(Schema):
         places=4,  # Cambiado de 2 a 4 para soportar decimales como 0.1850
         validate=validate.Range(min=0, max=1)  # Cambiado de 0-100 a 0-1 (decimal)
     )
-    effective_from = fields.DateTime(required=True)
+    effective_from = fields.DateTime(required=False, allow_none=True)  # Opcional: el backend lo calculará si no se proporciona
     effective_until = fields.DateTime(allow_none=True, dump_only=True)
     created_at = fields.DateTime(dump_only=True)
 
@@ -168,7 +168,7 @@ class MinimumGuaranteedHistorySchema(Schema):
         places=2,
         validate=validate.Range(min=0)
     )
-    effective_from = fields.DateTime(required=True)
+    effective_from = fields.DateTime(required=False, allow_none=True)  # Opcional: el backend lo calculará si no se proporciona
     effective_until = fields.DateTime(allow_none=True, dump_only=True)
     created_at = fields.DateTime(dump_only=True)
 

@@ -16,7 +16,7 @@ def create_minimum_guaranteed():
         record = MinimumGuaranteedController.create(
             driver_id=data['driver_id'],
             minimum_guaranteed=data['minimum_guaranteed'],
-            effective_from=data['effective_from']
+            effective_from=data.get('effective_from')  # Opcional
         )
         return jsonify(schema.dump(record)), 201
     except ValidationError as e:

@@ -1,5 +1,5 @@
 """Controlador para gestión de mínimo garantizado por chofer."""
-from datetime import datetime
+from datetime import datetime, timedelta
 from app.models.base import db
 from app.models.minimum_guaranteed_history import MinimumGuaranteedHistory
 from sqlalchemy import and_, or_
@@ -9,28 +9,45 @@ class MinimumGuaranteedController:
     """Controlador para mínimo garantizado."""
     
     @staticmethod
-    def create(driver_id, minimum_guaranteed, effective_from):
+    def create(driver_id, minimum_guaranteed, effective_from=None):
         """
         Crear nuevo registro de mínimo garantizado.
         Cierra el registro anterior si existe.
         """
-        # Cerrar el registro anterior vigente
-        current = MinimumGuaranteedHistory.query.filter(
-            and_(
-                MinimumGuaranteedHistory.driver_id == driver_id,
-                MinimumGuaranteedHistory.effective_until.is_(None)
-            )
-        ).first()
+        # Buscar el mínimo garantizado anterior más reciente del chofer
+        previous_minimum = MinimumGuaranteedHistory.query.filter_by(
+            driver_id=driver_id
+        ).order_by(MinimumGuaranteedHistory.effective_from.desc()).first()
         
-        if current:
-            current.effective_until = effective_from
+        # Determinar effective_from y created_at para el nuevo mínimo
+        if previous_minimum:
+            # Si hay mínimo anterior, el nuevo comienza el día siguiente al fin del anterior
+            if previous_minimum.effective_until:
+                # Si el anterior tiene fecha de fin, usar el día siguiente
+                new_effective_from = previous_minimum.effective_until + timedelta(days=1)
+            else:
+                # Si el anterior no tiene fecha de fin (está abierto), cerrarlo con la fecha actual
+                if effective_from is None:
+                    effective_from = datetime.utcnow()
+                # Cerrar el mínimo anterior un día antes del nuevo
+                previous_minimum.effective_until = effective_from - timedelta(days=1)
+                new_effective_from = effective_from
+        else:
+            # Si no hay mínimo anterior, usar la fecha proporcionada o la actual
+            if effective_from is None:
+                new_effective_from = datetime.utcnow()
+            else:
+                new_effective_from = effective_from
+        
+        # created_at debe ser igual a effective_from
+        created_at = new_effective_from
         
         # Crear nuevo registro
         new_record = MinimumGuaranteedHistory(
             driver_id=driver_id,
             minimum_guaranteed=minimum_guaranteed,
-            effective_from=effective_from,
-            effective_until=None
+            effective_from=new_effective_from,
+            created_at=created_at
         )
         
         db.session.add(new_record)

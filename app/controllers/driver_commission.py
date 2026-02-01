@@ -1,5 +1,5 @@
 """Controlador para gestión del historial de comisión de choferes."""
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 from sqlalchemy import and_, or_
 from app.models.base import db
@@ -22,25 +22,40 @@ class DriverCommissionController:
         if commission_percentage < 0 or commission_percentage > 100:
             raise ValueError("El porcentaje de comisión debe estar entre 0 y 100")
         
-        if effective_from is None:
-            effective_from = datetime.utcnow()
+        # Buscar la comisión anterior más reciente del chofer
+        previous_commission = DriverCommissionHistory.query.filter_by(
+            driver_id=driver_id
+        ).order_by(DriverCommissionHistory.effective_from.desc()).first()
         
-        # Cerrar el registro anterior
-        previous_records = DriverCommissionHistory.query.filter(
-            and_(
-                DriverCommissionHistory.driver_id == driver_id,
-                DriverCommissionHistory.effective_until.is_(None)
-            )
-        ).all()
+        # Determinar effective_from y created_at para la nueva comisión
+        if previous_commission:
+            # Si hay comisión anterior, la nueva comienza el día siguiente al fin de la anterior
+            if previous_commission.effective_until:
+                # Si la anterior tiene fecha de fin, usar el día siguiente
+                new_effective_from = previous_commission.effective_until + timedelta(days=1)
+            else:
+                # Si la anterior no tiene fecha de fin (está abierta), cerrarla con la fecha actual
+                if effective_from is None:
+                    effective_from = datetime.utcnow()
+                # Cerrar la comisión anterior un día antes de la nueva
+                previous_commission.effective_until = effective_from - timedelta(days=1)
+                new_effective_from = effective_from
+        else:
+            # Si no hay comisión anterior, usar la fecha proporcionada o la actual
+            if effective_from is None:
+                new_effective_from = datetime.utcnow()
+            else:
+                new_effective_from = effective_from
         
-        for prev in previous_records:
-            prev.effective_until = effective_from
+        # created_at debe ser igual a effective_from
+        created_at = new_effective_from
         
         # Crear nuevo registro
         commission_record = DriverCommissionHistory(
             driver_id=driver_id,
             commission_percentage=Decimal(str(commission_percentage)),
-            effective_from=effective_from
+            effective_from=new_effective_from,
+            created_at=created_at
         )
         
         db.session.add(commission_record)

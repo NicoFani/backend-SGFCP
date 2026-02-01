@@ -294,7 +294,7 @@ class PayrollCalculationController:
             else:
                 # Cálculo por tonelada
                 if trip.load_weight_on_unload and trip.rate:
-                    tonnage = Decimal(str(trip.load_weight_on_unload)) / Decimal('1000')  # kg a toneladas
+                    tonnage = Decimal(str(trip.load_weight_on_unload))  # Ya viene en toneladas desde el frontend
                     rate = Decimal(str(trip.rate))
                     trip_amount = tonnage * rate
                     calculation_data['tonnage'] = float(tonnage)
@@ -305,11 +305,12 @@ class PayrollCalculationController:
                 total_base += trip_amount
                 
                 # Calcular la comisión de este viaje
-                trip_commission = trip_amount * (commission_pct / Decimal('100'))
+                # commission_pct ya viene en formato decimal (0.14 = 14%), no dividir entre 100
+                trip_commission = trip_amount * commission_pct
                 
                 # Agregar datos del cálculo
                 calculation_data['base_amount'] = float(trip_amount)
-                calculation_data['commission_percentage'] = float(commission_pct)
+                calculation_data['commission_percentage'] = float(commission_pct * Decimal('100'))  # Convertir a porcentaje para mostrar
                 calculation_data['commission_amount'] = float(trip_commission)
                 
                 # Crear detalle
@@ -324,7 +325,8 @@ class PayrollCalculationController:
                 db.session.add(detail)
         
         # Retornar total de comisiones
-        commission = total_base * (commission_pct / Decimal('100'))
+        # commission_pct ya viene en formato decimal (0.14 = 14%), no dividir entre 100
+        commission = total_base * commission_pct
         return {
             'has_error': False,
             'error_message': None,
