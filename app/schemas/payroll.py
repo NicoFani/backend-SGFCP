@@ -129,8 +129,8 @@ class DriverCommissionHistorySchema(Schema):
     commission_percentage = fields.Decimal(
         as_string=True,
         required=True,
-        places=2,
-        validate=validate.Range(min=0, max=100)
+        places=4,  # Cambiado de 2 a 4 para soportar decimales como 0.1850
+        validate=validate.Range(min=0, max=1)  # Cambiado de 0-100 a 0-1 (decimal)
     )
     effective_from = fields.DateTime(required=True)
     effective_until = fields.DateTime(allow_none=True, dump_only=True)

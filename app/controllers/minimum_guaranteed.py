@@ -84,9 +84,15 @@ class MinimumGuaranteedController:
         if not record:
             raise ValueError("Registro no encontrado")
         
-        for key, value in kwargs.items():
-            if hasattr(record, key):
-                setattr(record, key, value)
+        # No permitir modificar fechas al actualizar
+        if 'effective_from' in kwargs:
+            raise ValueError("No se puede modificar la fecha de inicio de un registro existente")
+        if 'effective_until' in kwargs:
+            raise ValueError("No se puede modificar la fecha de fin de un registro existente")
+        
+        # Solo permitir actualizar minimum_guaranteed
+        if 'minimum_guaranteed' in kwargs:
+            record.minimum_guaranteed = kwargs['minimum_guaranteed']
         
         db.session.commit()
         return record

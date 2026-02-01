@@ -64,3 +64,25 @@ def get_commission_history(driver_id):
         }), 200
     except Exception as e:
         return jsonify({'success': False, 'message': f'Error interno: {str(e)}'}), 500
+
+
+@driver_commission_bp.route('/<int:driver_id>/commission/<int:record_id>', methods=['PUT'])
+def update_driver_commission(driver_id, record_id):
+    """Actualizar registro de comisión."""
+    try:
+        update_schema = DriverCommissionHistorySchema(partial=True)
+        data = update_schema.load(request.json)
+        
+        record = DriverCommissionController.update(record_id, **data)
+        
+        return jsonify({
+            'success': True,
+            'data': commission_schema.dump(record),
+            'message': 'Comisión actualizada exitosamente'
+        }), 200
+    except ValidationError as e:
+        return jsonify({'success': False, 'errors': e.messages}), 400
+    except ValueError as e:
+        return jsonify({'success': False, 'message': str(e)}), 404
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Error interno: {str(e)}'}), 500

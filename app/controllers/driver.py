@@ -87,6 +87,29 @@ class DriverController:
                 medical_exam_due_date=one_year_later
             )
             db.session.add(driver)
+            db.session.flush()  # Obtener el ID del driver para los registros históricos
+            
+            # Crear registro inicial de comisión (18%)
+            from ..models.driver_commission_history import DriverCommissionHistory
+            from datetime import datetime
+            commission_record = DriverCommissionHistory(
+                driver_id=driver.id,
+                commission_percentage=0.18,  # 18% guardado como decimal
+                effective_from=datetime.now(),
+                effective_until=None  # NULL = vigente actualmente
+            )
+            db.session.add(commission_record)
+            
+            # Crear registro inicial de mínimo garantizado (1.000.000)
+            from ..models.minimum_guaranteed_history import MinimumGuaranteedHistory
+            minimum_record = MinimumGuaranteedHistory(
+                driver_id=driver.id,
+                minimum_guaranteed=1000000.00,  # 1.000.000 pesos
+                effective_from=datetime.now(),
+                effective_until=None  # NULL = vigente actualmente
+            )
+            db.session.add(minimum_record)
+            
             db.session.commit()
             
             return jsonify({

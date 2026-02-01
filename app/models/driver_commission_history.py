@@ -10,7 +10,7 @@ class DriverCommissionHistory(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     driver_id = db.Column(db.Integer, db.ForeignKey('driver.id'), nullable=False)
-    commission_percentage = db.Column(db.Numeric(5, 2), nullable=False)
+    commission_percentage = db.Column(db.Numeric(5, 4), nullable=False)  # Decimal entre 0 y 1 (ej: 0.18 = 18%)
     
     effective_from = db.Column(db.DateTime, nullable=False)
     effective_until = db.Column(db.DateTime, nullable=True)  # NULL = vigente actualmente

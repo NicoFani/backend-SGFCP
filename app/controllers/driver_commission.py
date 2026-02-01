@@ -103,3 +103,23 @@ class DriverCommissionController:
         return DriverCommissionController.set_driver_commission(
             driver_id, commission_percentage
         )
+    
+    @staticmethod
+    def update(record_id, **kwargs):
+        """Actualizar registro de comisión."""
+        record = DriverCommissionHistory.query.get(record_id)
+        if not record:
+            raise ValueError("Registro no encontrado")
+        
+        # No permitir modificar fechas al actualizar
+        if 'effective_from' in kwargs:
+            raise ValueError("No se puede modificar la fecha de inicio de un registro existente")
+        if 'effective_until' in kwargs:
+            raise ValueError("No se puede modificar la fecha de fin de un registro existente")
+        
+        # Solo permitir actualizar commission_percentage
+        if 'commission_percentage' in kwargs:
+            record.commission_percentage = kwargs['commission_percentage']
+        
+        db.session.commit()
+        return record
