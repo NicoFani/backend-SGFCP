@@ -771,3 +771,33 @@ class PayrollCalculationController:
         
         db.session.commit()
         return summary
+
+    @staticmethod
+    def approve_summary(summary_id):
+        """
+        Aprobar un resumen de liquidación.
+        
+        Args:
+            summary_id: ID del resumen a aprobar
+        
+        Returns:
+            Resumen aprobado
+        
+        Raises:
+            ValueError: Si el resumen no está en estado 'pending_approval'
+        """
+        summary = PayrollSummary.query.get_or_404(summary_id)
+        
+        # Validar que el resumen esté en estado 'pending_approval'
+        if summary.status != 'pending_approval':
+            raise ValueError(
+                f"No se puede aprobar un resumen en estado '{summary.status}'. "
+                f"Solo se pueden aprobar resúmenes en estado 'pending_approval'."
+            )
+        
+        # Cambiar estado a aprobado
+        summary.status = 'approved'
+        summary.updated_at = datetime.now()
+        
+        db.session.commit()
+        return summary

@@ -137,26 +137,6 @@ def get_summary(summary_id):
         return jsonify({'success': False, 'message': f'Error interno: {str(e)}'}), 500
 
 
-@payroll_summary_bp.route('/<int:summary_id>/approve', methods=['POST'])
-def approve_summary(summary_id):
-    """Aprobar un resumen de liquidación."""
-    try:
-        data = request.json or {}
-        notes = data.get('notes')
-        
-        summary = PayrollCalculationController.approve_summary(summary_id, notes)
-        
-        return jsonify({
-            'success': True,
-            'data': summary_schema.dump(summary),
-            'message': 'Resumen aprobado exitosamente'
-        }), 200
-    except ValueError as e:
-        return jsonify({'success': False, 'message': str(e)}), 400
-    except Exception as e:
-        return jsonify({'success': False, 'message': f'Error interno: {str(e)}'}), 500
-
-
 @payroll_summary_bp.route('/<int:summary_id>/recalculate', methods=['POST'])
 def recalculate_summary(summary_id):
     """
@@ -245,6 +225,28 @@ def get_summaries_by_period(period_id):
                 'pages': pagination.pages
             }
         }), 200
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Error interno: {str(e)}'}), 500
+
+
+@payroll_summary_bp.route('/<int:summary_id>/approve', methods=['PUT'])
+def approve_summary(summary_id):
+    """
+    Aprobar un resumen de liquidación.
+    
+    Solo se pueden aprobar resúmenes en estado 'pending_approval'.
+    La aprobación es irreversible.
+    """
+    try:
+        summary = PayrollCalculationController.approve_summary(summary_id)
+        
+        return jsonify({
+            'success': True,
+            'data': summary_schema.dump(summary),
+            'message': 'Resumen aprobado exitosamente'
+        }), 200
+    except ValueError as e:
+        return jsonify({'success': False, 'message': str(e)}), 400
     except Exception as e:
         return jsonify({'success': False, 'message': f'Error interno: {str(e)}'}), 500
 
