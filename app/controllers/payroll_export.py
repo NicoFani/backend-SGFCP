@@ -10,8 +10,12 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
 from reportlab.pdfgen import canvas
+from sqlalchemy.orm import joinedload
 from app.models.payroll_summary import PayrollSummary
 from app.models.payroll_detail import PayrollDetail
+from app.models.app_user import AppUser
+from app.models.driver import Driver
+from app.models.base import db
 from app.controllers.payroll_calculation import PayrollCalculationController
 
 
@@ -31,13 +35,24 @@ class PayrollExportController:
         """Exportar resumen de liquidación a Excel."""
         PayrollExportController._ensure_export_dir()
         
-        # Obtener datos
-        summary, details = PayrollCalculationController.get_summary_details(summary_id)
+        # Obtener datos con eager loading de las relaciones
+        summary = PayrollSummary.query.options(
+            joinedload(PayrollSummary.driver).joinedload(Driver.user),
+            joinedload(PayrollSummary.period)
+        ).get(summary_id)
+        
+        if not summary:
+            raise ValueError(f"No se encontró el resumen con ID {summary_id}")
+        
+        _, details = PayrollCalculationController.get_summary_details(summary_id)
+        
+        # Obtener nombre completo del driver
+        driver_full_name = f"{summary.driver.user.name} {summary.driver.user.surname}"
         
         # Crear workbook
         wb = Workbook()
         ws = wb.active
-        ws.title = f"Liquidación {summary.driver.full_name}"
+        ws.title = f"Liquidación {driver_full_name}"
         
         # Estilos
         header_font = Font(bold=True, size=14)
@@ -69,22 +84,12 @@ class PayrollExportController:
         row += 1
         ws[f'A{row}'] = 'Chofer:'
         ws[f'A{row}'].font = bold_font
-        ws[f'B{row}'] = summary.driver.full_name
+        ws[f'B{row}'] = driver_full_name
         
         row += 1
         ws[f'A{row}'] = 'CUIL:'
         ws[f'A{row}'].font = bold_font
         ws[f'B{row}'] = summary.driver.cuil or 'N/A'
-        
-        row += 1
-        ws[f'A{row}'] = 'Tipo de cálculo:'
-        ws[f'A{row}'].font = bold_font
-        calculation_type_map = {
-            'by_tonnage': 'Por tonelada',
-            'by_km': 'Por kilómetro',
-            'both': 'Ambos'
-        }
-        ws[f'B{row}'] = calculation_type_map.get(summary.calculation_type, summary.calculation_type)
         
         row += 1
         ws[f'A{row}'] = 'Comisión aplicada:'
@@ -113,7 +118,7 @@ class PayrollExportController:
         expense_reimburse = []
         expense_deduct = []
         advances = []
-        adjustments = []
+        other_items = []
         
         for detail in details:
             if detail.detail_type == 'trip_commission':
@@ -122,10 +127,17 @@ class PayrollExportController:
                 expense_reimburse.append(detail)
             elif detail.detail_type == 'expense_deduct':
                 expense_deduct.append(detail)
-            elif detail.detail_type == 'advance':
+            elif detail.detail_type in ['advance', 'client_advance']:
                 advances.append(detail)
-            elif detail.detail_type == 'adjustment':
-                adjustments.append(detail)
+            elif detail.detail_type in [
+                'adjustment',
+                'other_item',
+                'other_item_adjustment',
+                'other_item_bonus',
+                'other_item_charge',
+                'other_item_fine'
+            ]:
+                other_items.append(detail)
         
         # Escribir detalles de viajes
         if trip_details:
@@ -195,16 +207,16 @@ class PayrollExportController:
                 for col in range(1, 5):
                     ws.cell(row=row, column=col).border = thin_border
         
-        # Escribir ajustes
-        if adjustments:
+        # Escribir otros conceptos
+        if other_items:
             row += 1
-            ws[f'A{row}'] = 'AJUSTES RETROACTIVOS'
+            ws[f'A{row}'] = 'OTROS CONCEPTOS'
             ws[f'A{row}'].font = bold_font
             ws.merge_cells(f'A{row}:D{row}')
             
-            for detail in adjustments:
+            for detail in other_items:
                 row += 1
-                ws[f'A{row}'] = 'Ajuste'
+                ws[f'A{row}'] = 'Concepto'
                 ws[f'B{row}'] = detail.description
                 ws[f'C{row}'] = float(detail.amount)
                 ws[f'C{row}'].number_format = '$#,##0.00'
@@ -225,7 +237,7 @@ class PayrollExportController:
             ('Gastos a descontar', -summary.expenses_to_deduct),
             ('Mínimo garantizado', summary.guaranteed_minimum_applied),
             ('Adelantos', -summary.advances_deducted),
-            ('Ajustes', summary.adjustments_applied),
+            ('Otros conceptos', summary.other_items_total),
         ]
         
         for label, amount in totals:
@@ -256,8 +268,19 @@ class PayrollExportController:
         ws.column_dimensions['D'].width = 10
         
         # Guardar archivo
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"liquidacion_{summary.driver.id}_{summary.period.year}_{summary.period.month:02d}_{timestamp}.xlsx"
+        # Formato: Liquidacion_EstadoResumen_NombreChofer_Periodo.xlsx
+        driver_name = f"{summary.driver.user.name}_{summary.driver.user.surname}"
+        driver_name = driver_name.replace(' ', '_')
+        period_name = f"{summary.period.month:02d}-{summary.period.year}"
+        status_map = {
+            'draft': 'Borrador',
+            'pending_approval': 'PendienteAprobacion',
+            'approved': 'Aprobado',
+            'error': 'Error',
+            'calculation_pending': 'CalculoPendiente'
+        }
+        status_name = status_map.get(summary.status, summary.status)
+        filename = f"Liquidacion_{status_name}_{driver_name}_{period_name}.xlsx"
         filepath = os.path.join(PayrollExportController.EXPORT_DIR, filename)
         
         wb.save(filepath)
@@ -265,7 +288,6 @@ class PayrollExportController:
         # Actualizar resumen
         summary.export_format = 'excel'
         summary.export_path = filepath
-        from app.models.base import db
         db.session.commit()
         
         return filepath
@@ -275,16 +297,30 @@ class PayrollExportController:
         """Exportar resumen de liquidación a PDF."""
         PayrollExportController._ensure_export_dir()
         
-        # Obtener datos
-        summary, details = PayrollCalculationController.get_summary_details(summary_id)
+        # Obtener datos con eager loading de las relaciones
+        summary = PayrollSummary.query.options(
+            joinedload(PayrollSummary.driver).joinedload(Driver.user),
+            joinedload(PayrollSummary.period)
+        ).get(summary_id)
+        
+        if not summary:
+            raise ValueError(f"No se encontró el resumen con ID {summary_id}")
+        
+        _, details = PayrollCalculationController.get_summary_details(summary_id)
+        
+        # Obtener nombre completo del driver
+        driver_full_name = f"{summary.driver.user.name} {summary.driver.user.surname}"
         
         # Validar que esté aprobado
         if summary.status != 'approved':
             raise ValueError("Solo se pueden exportar a PDF resúmenes aprobados")
         
         # Crear PDF
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"liquidacion_{summary.driver.id}_{summary.period.year}_{summary.period.month:02d}_{timestamp}.pdf"
+        # Formato: Resumen_NombreChofer_Periodo.pdf
+        driver_name = f"{summary.driver.user.name}_{summary.driver.user.surname}"
+        driver_name = driver_name.replace(' ', '_')
+        period_name = f"{summary.period.month:02d}-{summary.period.year}"
+        filename = f"Resumen_{driver_name}_{period_name}.pdf"
         filepath = os.path.join(PayrollExportController.EXPORT_DIR, filename)
         
         doc = SimpleDocTemplate(filepath, pagesize=letter)
@@ -305,9 +341,9 @@ class PayrollExportController:
         # Información del período
         info_data = [
             ['Período:', f"{summary.period.year}-{summary.period.month:02d}"],
-            ['Chofer:', summary.driver.full_name],
+            ['Chofer:', driver_full_name],
             ['CUIL:', summary.driver.cuil or 'N/A'],
-            ['CVU:', summary.driver.cvu or 'N/A'],
+            ['CBU:', summary.driver.cbu or 'N/A'],
             ['Comisión:', f"{summary.driver_commission_percentage}%"],
         ]
         
@@ -363,7 +399,7 @@ class PayrollExportController:
             ['Gastos a descontar', f"-${float(summary.expenses_to_deduct):,.2f}"],
             ['Mínimo garantizado', f"${float(summary.guaranteed_minimum_applied):,.2f}"],
             ['Adelantos', f"-${float(summary.advances_deducted):,.2f}"],
-            ['Ajustes', f"${float(summary.adjustments_applied):,.2f}"],
+            ['Otros conceptos', f"${float(summary.other_items_total):,.2f}"],
             ['', ''],
             ['TOTAL A PAGAR', f"${float(summary.total_amount):,.2f}"]
         ]

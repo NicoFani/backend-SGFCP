@@ -281,6 +281,9 @@ def export_summary(summary_id):
     except ValueError as e:
         return jsonify({'success': False, 'message': str(e)}), 400
     except Exception as e:
+        import traceback
+        print("ERROR EN EXPORT:", str(e))
+        print(traceback.format_exc())
         return jsonify({'success': False, 'message': f'Error interno: {str(e)}'}), 500
 
 
@@ -297,10 +300,21 @@ def download_summary(summary_id):
                 'message': 'No hay archivo de exportación disponible'
             }), 404
         
+        export_path = summary.export_path
+        if not os.path.isabs(export_path):
+            base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+            export_path = os.path.join(base_dir, export_path)
+        
+        if not os.path.exists(export_path):
+            return jsonify({
+                'success': False,
+                'message': 'No se encontró el archivo de exportación'
+            }), 404
+        
         return send_file(
-            summary.export_path,
+            export_path,
             as_attachment=True,
-            download_name=os.path.basename(summary.export_path)
+            download_name=os.path.basename(export_path)
         )
     except ValueError as e:
         return jsonify({'success': False, 'message': str(e)}), 404
