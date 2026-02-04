@@ -16,7 +16,6 @@ from app.models.payroll_detail import PayrollDetail
 from app.models.app_user import AppUser
 from app.models.driver import Driver
 from app.models.base import db
-from app.controllers.payroll_calculation import PayrollCalculationController
 
 
 class PayrollExportController:
@@ -33,6 +32,7 @@ class PayrollExportController:
     @staticmethod
     def export_to_excel(summary_id):
         """Exportar resumen de liquidación a Excel."""
+        from app.controllers.payroll_calculation import PayrollCalculationController
         PayrollExportController._ensure_export_dir()
         
         # Obtener datos con eager loading de las relaciones
@@ -295,6 +295,7 @@ class PayrollExportController:
     @staticmethod
     def export_to_pdf(summary_id):
         """Exportar resumen de liquidación a PDF."""
+        from app.controllers.payroll_calculation import PayrollCalculationController
         PayrollExportController._ensure_export_dir()
         
         # Obtener datos con eager loading de las relaciones

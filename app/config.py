@@ -1,8 +1,14 @@
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 # Directorio base del proyecto
 BASE_DIR = Path(__file__).parent.parent
+
+# Cargar variables desde .env si existe
+load_dotenv(BASE_DIR / '.env')
+# Compatibilidad: .env dentro de app/
+load_dotenv(Path(__file__).parent / '.env')
 
 class Config:
     # Usar SQLite para desarrollo (sin problemas de encoding en Windows)
@@ -24,3 +30,12 @@ class Config:
         'pool_pre_ping': True,
         'echo': False  # Cambiar a True para ver las consultas SQL en consola
     }
+
+    # Brevo (Sendinblue) Email
+    BREVO_API_KEY = os.getenv('BREVO_API_KEY', '')
+    BREVO_SENDER_EMAIL = os.getenv('BREVO_SENDER_EMAIL', 'utnros2023@gmail.com')
+    BREVO_SENDER_NAME = os.getenv('BREVO_SENDER_NAME', 'Fleeight')
+    BREVO_ACCOUNTING_RECIPIENTS = os.getenv(
+        'BREVO_ACCOUNTING_RECIPIENTS',
+        'nicolasfani02@hotmail.com,mongelosmanuel6@gmail.com'
+    )

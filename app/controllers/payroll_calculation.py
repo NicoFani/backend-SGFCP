@@ -1,5 +1,7 @@
 """Controlador para cálculo y gestión de liquidaciones."""
 from datetime import datetime
+import os
+from flask import current_app
 from decimal import Decimal
 import json
 from sqlalchemy import and_, or_
@@ -13,6 +15,7 @@ from app.models.trip import Trip
 from app.models.expense import Expense
 from app.models.advance_payment import AdvancePayment
 from app.controllers.payroll_period import PayrollPeriodController
+from app.utils.brevo_email import send_brevo_email
 
 
 class PayrollCalculationController:
@@ -492,6 +495,10 @@ class PayrollCalculationController:
         
         for item in other_items:
             amount = Decimal(str(item.amount))
+            if item.item_type == 'bonus':
+                amount = abs(amount)
+            elif item.item_type in ['extra_charge', 'fine_without_trip']:
+                amount = -abs(amount)
             total_other_items += amount
             
             # Determinar el tipo de detalle
@@ -800,4 +807,86 @@ class PayrollCalculationController:
         summary.updated_at = datetime.now()
         
         db.session.commit()
+
+        # Verificar si corresponde enviar email a contaduría
+        PayrollCalculationController._notify_accounting_if_period_approved(summary.period_id)
         return summary
+
+    @staticmethod
+    def _notify_accounting_if_period_approved(period_id):
+        """Enviar email con PDFs cuando todos los resúmenes del período estén aprobados."""
+        from app.models.payroll_period import PayrollPeriod
+        from app.controllers.payroll_export import PayrollExportController
+
+        period = PayrollPeriod.query.get(period_id)
+        if not period:
+            return False, "Período no encontrado"
+
+        if getattr(period, 'email_sent', False):
+            current_app.logger.info("Email ya enviado para el período %s", period_id)
+            return False, "Email ya enviado"
+
+        total = PayrollSummary.query.filter_by(period_id=period_id).count()
+        if total == 0:
+            current_app.logger.info("No hay resúmenes para el período %s", period_id)
+            return False, "No hay resúmenes en el período"
+
+        approved_count = PayrollSummary.query.filter_by(
+            period_id=period_id,
+            status='approved'
+        ).count()
+
+        if approved_count != total:
+            current_app.logger.info(
+                "Período %s: aprobados %s/%s, no se envía email",
+                period_id,
+                approved_count,
+                total
+            )
+            return False, "Aún hay resúmenes sin aprobar"
+
+        # Exportar PDFs de todos los resúmenes aprobados
+        summaries = PayrollSummary.query.filter_by(
+            period_id=period_id,
+            status='approved'
+        ).all()
+
+        attachment_paths = []
+        for summary in summaries:
+            pdf_path = PayrollExportController.export_to_pdf(summary.id)
+            # Asegurar ruta absoluta
+            if not os.path.isabs(pdf_path):
+                base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+                pdf_path = os.path.join(base_dir, pdf_path)
+            attachment_paths.append(pdf_path)
+
+        period_label = f"{period.month:02d}/{period.year}"
+        subject = f"Resúmenes de liquidación - {period_label}"
+        html_content = (
+            f"<p>Se adjuntan los resúmenes de liquidación del período {period_label}.</p>"
+            f"<p>Estado: todos los resúmenes aprobados.</p>"
+        )
+
+        recipients_raw = current_app.config.get('BREVO_ACCOUNTING_RECIPIENTS', '')
+        recipients = [email.strip() for email in recipients_raw.split(',') if email.strip()]
+
+        current_app.logger.info("Enviando email de resúmenes para período %s", period_id)
+        success, message = send_brevo_email(
+            api_key=current_app.config.get('BREVO_API_KEY', ''),
+            sender_email=current_app.config.get('BREVO_SENDER_EMAIL', ''),
+            sender_name=current_app.config.get('BREVO_SENDER_NAME', ''),
+            recipients=recipients,
+            subject=subject,
+            html_content=html_content,
+            attachment_paths=attachment_paths
+        )
+
+        if success:
+            current_app.logger.info("Email enviado para período %s", period_id)
+            period.email_sent = True
+            period.email_sent_at = datetime.now()
+            db.session.commit()
+            return True, message
+
+        current_app.logger.error("Error enviando email período %s: %s", period_id, message)
+        return False, message

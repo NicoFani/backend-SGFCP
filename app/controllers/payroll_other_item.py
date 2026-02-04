@@ -1,22 +1,38 @@
 """Controlador para gestión de otros conceptos de liquidación."""
 from datetime import datetime
+from decimal import Decimal
 from app.models.base import db
 from app.models.payroll_other_item import PayrollOtherItem
 
 
 class PayrollOtherItemController:
     """Controlador para otros conceptos (ajustes, bonificaciones, cargos, multas)."""
+
+    @staticmethod
+    def _normalize_amount(amount, item_type):
+        """Aplicar reglas de negocio sobre el signo del importe."""
+        if amount is None:
+            return amount
+
+        value = Decimal(str(amount))
+        if item_type == 'bonus':
+            return abs(value)
+        if item_type in ['extra_charge', 'fine_without_trip']:
+            return -abs(value)
+        # adjustment: puede sumar o restar
+        return value
     
     @staticmethod
     def create(driver_id, period_id, item_type, description, amount, date, 
                created_by, reference=None, receipt_url=None):
         """Crear nuevo concepto."""
+        normalized_amount = PayrollOtherItemController._normalize_amount(amount, item_type)
         item = PayrollOtherItem(
             driver_id=driver_id,
             period_id=period_id,
             item_type=item_type,
             description=description,
-            amount=amount,
+            amount=normalized_amount,
             date=date,
             reference=reference,
             receipt_url=receipt_url,
@@ -69,6 +85,10 @@ class PayrollOtherItemController:
         for key, value in kwargs.items():
             if key in allowed_fields and hasattr(item, key):
                 setattr(item, key, value)
+
+        # Re-normalizar monto si corresponde
+        if 'amount' in kwargs or 'item_type' in kwargs:
+            item.amount = PayrollOtherItemController._normalize_amount(item.amount, item.item_type)
         
         item.updated_at = datetime.utcnow()
         db.session.commit()
