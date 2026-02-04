@@ -16,6 +16,7 @@ from .payroll_settings import PayrollSettings
 from .driver_commission_history import DriverCommissionHistory
 from .minimum_guaranteed_history import MinimumGuaranteedHistory
 from .payroll_other_item import PayrollOtherItem
+from .notification import Notification
 
 # Deprecated models (mantener por compatibilidad pero no usar)
 from .commission_percentage import CommissionPercentage
@@ -43,6 +44,7 @@ __all__ = [
     'DriverCommissionHistory',
     'MinimumGuaranteedHistory',
     'PayrollOtherItem',
+    'Notification',
     # Deprecated
     'CommissionPercentage',
     'KmRate',

@@ -5,6 +5,7 @@ from marshmallow import ValidationError
 from ..models.advance_payment import AdvancePayment
 from ..models.base import db
 from ..schemas.advance_payment import AdvancePaymentSchema, AdvancePaymentUpdateSchema
+from ..controllers.notification import NotificationController
 
 class AdvancePaymentController:
     
@@ -51,6 +52,23 @@ class AdvancePaymentController:
             advance_payment = AdvancePayment(**validated_data)
             db.session.add(advance_payment)
             db.session.commit()
+
+            # Notificar al chofer sobre el adelanto recibido
+            try:
+                NotificationController.create_for_user(
+                    user_id=advance_payment.driver_id,
+                    title='Adelanto recibido',
+                    message=f"Recibiste un adelanto de ${advance_payment.amount:.2f} el {advance_payment.date.strftime('%d/%m/%Y')}.",
+                    notif_type='advance_payment',
+                    dedupe_key=f"advance_payment:{advance_payment.id}",
+                    data={
+                        'advance_payment_id': advance_payment.id,
+                        'amount': advance_payment.amount,
+                        'date': advance_payment.date.isoformat() if advance_payment.date else None
+                    }
+                )
+            except Exception as e:
+                print(f"Error creando notificación de adelanto {advance_payment.id}: {str(e)}")
             
             return jsonify({
                 'message': 'Anticipo creado exitosamente',

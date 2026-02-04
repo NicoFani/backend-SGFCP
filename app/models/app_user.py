@@ -11,6 +11,7 @@ class AppUser(db.Model):
     is_active = db.Column(db.Boolean, default=True, nullable=False)
     drivers = db.relationship('Driver', backref='app_user', lazy=True)
     advance_payments = db.relationship('AdvancePayment', backref='admin', lazy=True, foreign_keys='AdvancePayment.admin_id')
+    notifications = db.relationship('Notification', backref='user', lazy=True, cascade='all, delete-orphan')
 
     def to_dict(self):
         return {

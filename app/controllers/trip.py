@@ -6,6 +6,7 @@ from ..models.trip import Trip
 from ..models.driver import Driver
 from ..models.base import db
 from ..schemas.trip import TripSchema, TripUpdateSchema
+from ..controllers.notification import NotificationController
 
 class TripController:
     
@@ -72,6 +73,26 @@ class TripController:
                 created_trips.append(trip)
             
             db.session.commit()
+
+            # Notificar a los choferes sobre viajes asignados
+            try:
+                for trip in created_trips:
+                    NotificationController.create_for_user(
+                        user_id=trip.driver_id,
+                        title='Nuevo viaje asignado',
+                        message=f"Tienes un nuevo viaje de {trip.origin} a {trip.destination} para el {trip.start_date.strftime('%d/%m/%Y')}.",
+                        notif_type='trip_assigned',
+                        dedupe_key=f"trip_assigned:{trip.id}",
+                        data={
+                            'trip_id': trip.id,
+                            'driver_id': trip.driver_id
+                        },
+                        commit=False
+                    )
+                db.session.commit()
+            except Exception as e:
+                db.session.rollback()
+                print(f"Error creando notificaciones de viajes asignados: {str(e)}")
             
             return jsonify({
                 'message': f'{len(created_trips)} viaje(s) creado(s) exitosamente',
@@ -89,6 +110,7 @@ class TripController:
         """Actualiza un viaje existente (admin puede todo, chofer solo ciertos campos)"""
         try:
             trip = Trip.query.get_or_404(trip_id)
+            previous_state = trip.state_id
             
             # Verificar permisos: solo admin o el conductor asignado al viaje
             if not is_admin:
@@ -168,6 +190,35 @@ class TripController:
                 setattr(trip, field, value)
             
             db.session.commit()
+
+            # Notificar a admins cuando el chofer inicia o finaliza un viaje
+            if not is_admin and 'state_id' in validated_data and previous_state != trip.state_id:
+                try:
+                    driver_name = f"{trip.driver.user.name} {trip.driver.user.surname}" if trip.driver and trip.driver.user else f"Chofer {trip.driver_id}"
+                    if trip.state_id == 'En curso':
+                        NotificationController.create_for_admins(
+                            title='Viaje iniciado',
+                            message=f"{driver_name} inició un viaje de {trip.origin} a {trip.destination}.",
+                            notif_type='trip_started',
+                            dedupe_key=f"trip_started:{trip.id}",
+                            data={
+                                'trip_id': trip.id,
+                                'driver_id': trip.driver_id
+                            }
+                        )
+                    elif trip.state_id == 'Finalizado':
+                        NotificationController.create_for_admins(
+                            title='Viaje finalizado',
+                            message=f"{driver_name} finalizó el viaje de {trip.origin} a {trip.destination}.",
+                            notif_type='trip_finished',
+                            dedupe_key=f"trip_finished:{trip.id}",
+                            data={
+                                'trip_id': trip.id,
+                                'driver_id': trip.driver_id
+                            }
+                        )
+                except Exception as e:
+                    print(f"Error creando notificación de estado de viaje {trip.id}: {str(e)}")
             
             # Si el viaje se acaba de finalizar, verificar si necesita ajuste retroactivo
             # y recalcular resúmenes en "calculation_pending"

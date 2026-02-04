@@ -23,6 +23,7 @@ from .models.commission_percentage import CommissionPercentage
 from .models.driver_truck import DriverTruck
 from .models.km_rate import KmRate
 from .models.monthly_summary import MonthlySummary
+from .models.notification import Notification
 
 __all__ = [
     'db',
@@ -42,6 +43,7 @@ __all__ = [
     'CommissionPercentage',
     'DriverTruck',
     'KmRate',
-    'MonthlySummary'
+    'MonthlySummary',
+    'Notification'
 ]
 
