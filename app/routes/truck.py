@@ -24,10 +24,9 @@ def get_truck(truck_id):
 def create_truck():
     return TruckController.create_truck(request.get_json())
 
-# UPDATE truck (solo admin)
+# UPDATE truck
 @truck_bp.route('/<int:truck_id>', methods=['PUT'])
 @jwt_required()
-@admin_required()
 def update_truck(truck_id):
     return TruckController.update_truck(truck_id, request.get_json())
 
