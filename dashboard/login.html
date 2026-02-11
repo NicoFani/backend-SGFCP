@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SGFCP | Login Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="bg">
+      <div class="blob blob-1"></div>
+      <div class="blob blob-2"></div>
+      <div class="grid"></div>
+    </div>
+
+    <main class="login-page">
+      <button id="themeToggle" class="theme-toggle" title="Cambiar tema" aria-label="Cambiar tema">
+        <svg id="themeIcon" viewBox="0 0 24 24" aria-hidden="true">
+          <path id="sunIcon" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path id="moonIcon" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" fill="currentColor" style="display:none;"/>
+        </svg>
+      </button>
+      <section class="login-card">
+        <div>
+          <div class="brand-mark">SGFCP</div>
+          <div class="brand-sub">Admin Dashboard</div>
+        </div>
+        <h2>Acceso administrador</h2>
+        <p class="subtitle">Solo usuarios admin pueden ingresar.</p>
+
+        <label class="field">
+          <span>Email</span>
+          <input id="email" type="email" placeholder="admin@empresa.com" />
+        </label>
+        <label class="field">
+          <span>Password</span>
+          <input id="password" type="password" placeholder="********" />
+        </label>
+
+        <div class="login-actions">
+          <button id="loginBtn" class="btn primary">Login</button>
+          <button id="clearBtn" class="btn ghost">Limpiar</button>
+        </div>
+
+        <div id="status" class="status">Ingresa tus credenciales</div>
+      </section>
+    </main>
+
+    <script src="login.js"></script>
+  </body>
+</html>

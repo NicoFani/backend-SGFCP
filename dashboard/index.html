@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SGFCP | Dashboard Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="bg">
+      <div class="blob blob-1"></div>
+      <div class="blob blob-2"></div>
+      <div class="grid"></div>
+    </div>
+
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">SGFCP</div>
+          <div class="brand-sub">Admin Dashboard</div>
+        </div>
+
+        <nav class="nav">
+          <button class="nav-item active" data-view="overview">
+            Resumen
+          </button>
+          <button class="nav-item" data-view="finance">Finanzas</button>
+          <button class="nav-item" data-view="fleet">Flota</button>
+          <button class="nav-item" data-view="advances">Anticipos</button>
+          <button class="nav-item" data-view="clients">Clientes</button>
+        </nav>
+        <div class="sidebar-actions">
+          <button id="logoutBtn" class="btn ghost">Salir</button>
+        </div>
+      </aside>
+
+      <main class="content">
+        <header class="topbar">
+          <div>
+            <h1>Dashboard de negocio</h1>
+            <p class="subtitle">KPIs, tendencias y alertas para decisiones rapidas.</p>
+          </div>
+          <div class="topbar-right">
+            <button id="themeToggle" class="btn-icon" title="Cambiar tema" aria-label="Cambiar tema">
+              <svg id="themeIcon" viewBox="0 0 24 24" aria-hidden="true">
+                <path id="sunIcon" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path id="moonIcon" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" fill="currentColor" style="display:none;"/>
+              </svg>
+            </button>
+            <div class="filters">
+            <label>
+              <span>Desde</span>
+              <input id="fromDate" type="date" />
+            </label>
+            <label>
+              <span>Hasta</span>
+              <input id="toDate" type="date" />
+            </label>
+            <div class="filter-actions">
+              <button
+                id="applyFilters"
+                class="btn-icon"
+                title="Aplicar"
+                aria-label="Aplicar filtros"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M9.5 12.5l2 2 4-4"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </button>
+              <button
+                id="resetFilters"
+                class="btn-icon"
+                title="Reset"
+                aria-label="Resetear filtros"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M4 4v6h6"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                  <path
+                    d="M20 20v-6h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                  <path
+                    d="M5 14a7 7 0 0012.5 3.5"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                  <path
+                    d="M19 10A7 7 0 006.5 6.5"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </button>
+              <button
+                id="reloadBtn"
+                class="btn-icon btn-icon--dark"
+                title="Recargar"
+                aria-label="Recargar datos"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M20 12a8 8 0 10-3 6.3"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                  <path
+                    d="M20 8v4h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
+            </div>
+          </div>
+        </header>
+
+        <section id="overview" class="view active">
+          <div class="kpi-grid" id="kpis"></div>
+
+          <div class="grid-2">
+            <div class="card chart-card chart-card--compact">
+              <div class="card-head">
+                <h3>Ingresos vs Gastos</h3>
+                <div class="card-actions">
+                  <span class="muted">Mensual</span>
+                  <button
+                    class="chart-expand"
+                    data-chart="chartRevenue"
+                    title="Expandir"
+                    aria-label="Expandir grafico ingresos vs gastos"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path
+                        d="M8 4H4v4"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                      <path
+                        d="M4 4l6 6"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                      <path
+                        d="M16 20h4v-4"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                      <path
+                        d="M14 14l6 6"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <canvas id="chartRevenue"></canvas>
+            </div>
+            <div class="card chart-card chart-card--compact">
+              <div class="card-head">
+                <h3>Gastos por tipo</h3>
+                <div class="card-actions">
+                  <span class="muted">Distribucion</span>
+                  <button
+                    class="chart-expand"
+                    data-chart="chartExpenses"
+                    title="Expandir"
+                    aria-label="Expandir grafico gastos por tipo"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path
+                        d="M8 4H4v4"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                      <path
+                        d="M4 4l6 6"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                      <path
+                        d="M16 20h4v-4"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                      <path
+                        d="M14 14l6 6"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <canvas id="chartExpenses"></canvas>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-head">
+                <h3>Viajes recientes</h3>
+                <span class="muted">Ultimos 10</span>
+              </div>
+              <div class="table" id="tableTrips"></div>
+            </div>
+            <div class="card">
+              <div class="card-head">
+                <h3>Alertas de margen bajo</h3>
+                <span class="muted">Top 5</span>
+              </div>
+              <div class="table" id="tableMargins"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="finance" class="view">
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-head">
+                <h3>Top clientes por facturacion</h3>
+                <div class="card-actions">
+                  <span class="muted">Top 8</span>
+                  <button
+                    class="chart-expand"
+                    data-chart="chartClients"
+                    title="Expandir"
+                    aria-label="Expandir grafico top clientes"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path
+                        d="M8 4H4v4"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                      <path
+                        d="M4 4l6 6"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                      <path
+                        d="M16 20h4v-4"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                      <path
+                        d="M14 14l6 6"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <canvas id="chartClients"></canvas>
+            </div>
+            <div class="card">
+              <div class="card-head">
+                <h3>Viajes por estado</h3>
+                <div class="card-actions">
+                  <span class="muted">Distribucion</span>
+                  <button
+                    class="chart-expand"
+                    data-chart="chartTripState"
+                    title="Expandir"
+                    aria-label="Expandir grafico viajes por estado"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path
+                        d="M8 4H4v4"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                      <path
+                        d="M4 4l6 6"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                      <path
+                        d="M16 20h4v-4"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                      <path
+                        d="M14 14l6 6"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <canvas id="chartTripState"></canvas>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h3>Gastos recientes</h3>
+              <span class="muted">Ultimos 12</span>
+            </div>
+            <div class="table" id="tableExpenses"></div>
+          </div>
+        </section>
+
+        <section id="fleet" class="view">
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-head">
+                <h3>Flota operativa</h3>
+                <span class="muted">Camiones</span>
+              </div>
+              <div class="kpi-rail" id="fleetKpis"></div>
+            </div>
+            <div class="card">
+              <div class="card-head">
+                <h3>Servicios proximos</h3>
+                <span class="muted">Proximos 30 dias</span>
+              </div>
+              <div class="table" id="tableServices"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="advances" class="view">
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-head">
+                <h3>Anticipos por chofer</h3>
+                <div class="card-actions">
+                  <span class="muted">Acumulado</span>
+                  <button
+                    class="chart-expand"
+                    data-chart="chartAdvances"
+                    title="Expandir"
+                    aria-label="Expandir grafico anticipos por chofer"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path
+                        d="M8 4H4v4"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                      <path
+                        d="M4 4l6 6"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                      <path
+                        d="M16 20h4v-4"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                      <path
+                        d="M14 14l6 6"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <canvas id="chartAdvances"></canvas>
+            </div>
+            <div class="card">
+              <div class="card-head">
+                <h3>Anticipos recientes</h3>
+                <span class="muted">Ultimos 12</span>
+              </div>
+              <div class="table" id="tableAdvances"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="clients" class="view">
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-head">
+                <h3>Clientes activos</h3>
+                <span class="muted">Con viajes</span>
+              </div>
+              <div class="kpi-rail" id="clientKpis"></div>
+            </div>
+            <div class="card">
+              <div class="card-head">
+                <h3>Ranking de clientes</h3>
+                <span class="muted">Por ingreso</span>
+              </div>
+              <div class="table" id="tableClients"></div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div id="chartModal" class="chart-modal" aria-hidden="true">
+      <div class="chart-modal__backdrop"></div>
+      <div class="chart-modal__panel">
+        <div class="chart-modal__head">
+          <h3 id="chartModalTitle">Grafico</h3>
+          <button id="chartModalClose" class="btn-icon" aria-label="Cerrar">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M6 6l12 12"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <path
+                d="M18 6l-12 12"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </button>
+        </div>
+        <div id="chartModalBody" class="chart-modal__body"></div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
