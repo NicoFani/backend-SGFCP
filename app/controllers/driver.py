@@ -17,7 +17,23 @@ class DriverController:
             else:
                 # Los conductores solo pueden ver su propia información
                 drivers = Driver.query.filter_by(id=current_user_id).all()
-            return jsonify([driver.to_dict() for driver in drivers]), 200
+
+            drivers_data = [driver.to_dict() for driver in drivers]
+
+            # Estado operativo del chofer: tiene viaje "En curso"
+            if drivers_data:
+                from ..models.trip import Trip
+                driver_ids = [driver['id'] for driver in drivers_data]
+                active_rows = db.session.query(Trip.driver_id).filter(
+                    Trip.driver_id.in_(driver_ids),
+                    Trip.state_id == 'En curso'
+                ).distinct().all()
+                active_driver_ids = {row[0] for row in active_rows}
+
+                for driver in drivers_data:
+                    driver['is_active'] = driver['id'] in active_driver_ids
+
+            return jsonify(drivers_data), 200
         except SQLAlchemyError as e:
             return jsonify({'error': 'Error al obtener conductores', 'details': str(e)}), 500
 
@@ -26,7 +42,16 @@ class DriverController:
         """Obtiene un conductor por ID"""
         try:
             driver = Driver.query.get_or_404(driver_id)
-            return jsonify(driver.to_dict()), 200
+            driver_data = driver.to_dict()
+
+            from ..models.trip import Trip
+            has_active_trip = db.session.query(Trip.id).filter(
+                Trip.driver_id == driver_id,
+                Trip.state_id == 'En curso'
+            ).first() is not None
+            driver_data['is_active'] = has_active_trip
+
+            return jsonify(driver_data), 200
         except Exception as e:
             return jsonify({'error': 'Conductor no encontrado'}), 404
 
