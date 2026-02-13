@@ -77,13 +77,14 @@ class ExpenseController:
 
     @staticmethod
     def update_expense(expense_id, data, current_user_id=None, is_admin=False):
-        """Actualiza un gasto existente (solo admin puede editar)"""
+        """Actualiza un gasto existente (admin o el propio chofer)"""
         try:
             expense = Expense.query.get_or_404(expense_id)
             
-            # Chofer no puede editar
+            # Chofer solo puede editar sus propios gastos
             if not is_admin:
-                return jsonify({'error': 'No tienes permisos para editar gastos'}), 403
+                if expense.driver_id != current_user_id:
+                    return jsonify({'error': 'No tienes permisos para editar este gasto'}), 403
             
             # Validar datos
             schema = ExpenseUpdateSchema()
