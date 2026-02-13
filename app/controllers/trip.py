@@ -147,6 +147,7 @@ class TripController:
                         'document_number',          # Número de documento
                         'estimated_kms',            # Kms a recorrer
                         'load_weight_on_load',      # Peso de carga estimado
+                        'client_advance_payment',   # Adelanto opcional del cliente
                         'load_owner_id',            # Dador de carga
                         'fuel_on_client',           # Vale de combustible
                         'fuel_liters',              # Litros del vale
@@ -156,15 +157,41 @@ class TripController:
                         'rate',                     # Tarifa del viaje
                     ]
                 elif trip.state_id == 'En curso':
-                    # Chofer finalizando viaje: puede cargar datos de fin
+                    # Chofer con viaje en curso: puede ajustar datos operativos
                     allowed_fields = [
+                        'document_type',            # Tipo de documento (CTG/Remito)
+                        'document_number',          # Número de documento
+                        'estimated_kms',            # Kms a recorrer
+                        'load_weight_on_load',      # Peso de carga estimado
+                        'client_advance_payment',   # Adelanto opcional del cliente
+                        'load_owner_id',            # Dador de carga
+                        'fuel_on_client',           # Vale de combustible
+                        'fuel_liters',              # Litros del vale
+                        'load_type_id',             # Tipo de carga
+                        'calculated_per_km',        # Cálculo por km o por viaje
+                        'rate',                     # Tarifa del viaje
                         'end_date',                 # Fecha fin
                         'load_weight_on_unload',    # Peso de descarga
                         'state_id',                 # Estado (En curso -> Finalizado)
                     ]
                 else:
-                    # Estado Finalizado: chofer no puede editar
-                    allowed_fields = []
+                    # Estado Finalizado: chofer puede corregir datos operativos/financieros
+                    # (ej. tarifa cargada después de finalizar), sin cambiar estado.
+                    allowed_fields = [
+                        'document_type',            # Tipo de documento (CTG/Remito)
+                        'document_number',          # Número de documento
+                        'estimated_kms',            # Kms a recorrer
+                        'load_weight_on_load',      # Peso de carga
+                        'load_weight_on_unload',    # Peso de descarga
+                        'client_advance_payment',   # Adelanto opcional del cliente
+                        'load_owner_id',            # Dador de carga
+                        'fuel_on_client',           # Vale de combustible
+                        'fuel_liters',              # Litros del vale
+                        'load_type_id',             # Tipo de carga
+                        'calculated_per_km',        # Cálculo por km o por tonelada
+                        'rate',                     # Tarifa del viaje
+                        'end_date',                 # Fecha fin
+                    ]
                 
                 # Filtrar solo campos permitidos
                 filtered_data = {k: v for k, v in validated_data.items() if k in allowed_fields}
