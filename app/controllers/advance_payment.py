@@ -6,8 +6,17 @@ from ..models.advance_payment import AdvancePayment
 from ..models.base import db
 from ..schemas.advance_payment import AdvancePaymentSchema, AdvancePaymentUpdateSchema
 from ..controllers.notification import NotificationController
+from ..utils.supabase_storage import supabase_storage
 
 class AdvancePaymentController:
+    
+    ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg'}
+    
+    @staticmethod
+    def _allowed_file(filename):
+        """Verifica si el archivo tiene una extensión permitida"""
+        return '.' in filename and \
+               filename.rsplit('.', 1)[1].lower() in AdvancePaymentController.ALLOWED_EXTENSIONS
     
     @staticmethod
     def get_all_advance_payments(current_user_id=None, is_admin=False):
@@ -37,7 +46,7 @@ class AdvancePaymentController:
             return jsonify({'error': 'Anticipo no encontrado'}), 404
 
     @staticmethod
-    def create_advance_payment(data, current_user_id=None, is_admin=False):
+    def create_advance_payment(data, current_user_id=None, is_admin=False, receipt_file=None):
         """Crea un nuevo anticipo (solo admin puede crear)"""
         try:
             if not is_admin:
@@ -48,6 +57,34 @@ class AdvancePaymentController:
             
             # Establecer el admin_id del usuario autenticado
             validated_data['admin_id'] = current_user_id
+            
+            # Manejar archivo adjunto si existe
+            receipt_url = None
+            if receipt_file and receipt_file.filename:
+                if AdvancePaymentController._allowed_file(receipt_file.filename):
+                    try:
+                        # Leer los bytes del archivo
+                        file_bytes = receipt_file.read()
+                        
+                        # Subir a Supabase Storage
+                        receipt_url = supabase_storage.upload_file(
+                            file_bytes=file_bytes,
+                            filename=receipt_file.filename,
+                            folder='advance_receipts'
+                        )
+                    except Exception as e:
+                        return jsonify({
+                            'error': 'Error al subir el archivo',
+                            'details': str(e)
+                        }), 500
+                else:
+                    return jsonify({
+                        'error': 'Tipo de archivo no permitido',
+                        'details': 'Solo se permiten archivos PDF, PNG, JPG y JPEG'
+                    }), 400
+            
+            if receipt_url:
+                validated_data['receipt'] = receipt_url
             
             advance_payment = AdvancePayment(**validated_data)
             db.session.add(advance_payment)
@@ -119,6 +156,14 @@ class AdvancePaymentController:
                 return jsonify({'error': 'Solo los administradores pueden eliminar anticipos'}), 403
             
             advance_payment = AdvancePayment.query.get_or_404(advance_payment_id)
+            
+            # Eliminar archivo de Supabase si existe
+            if advance_payment.receipt:
+                try:
+                    supabase_storage.delete_file(advance_payment.receipt)
+                except Exception as e:
+                    print(f"Error eliminando archivo de Supabase: {str(e)}")
+            
             db.session.delete(advance_payment)
             db.session.commit()
             

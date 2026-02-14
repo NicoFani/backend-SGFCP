@@ -25,7 +25,21 @@ def get_advance_payment(advance_payment_id):
 def create_advance_payment():
     current_user_id = int(get_jwt_identity())
     is_admin = get_jwt().get('is_admin', False)
-    return AdvancePaymentController.create_advance_payment(request.get_json(), current_user_id, is_admin)
+    
+    # Verificar si hay archivo adjunto
+    receipt_file = request.files.get('receipt') if request.files else None
+    
+    # Obtener datos del formulario o JSON
+    if receipt_file:
+        # Con archivo: datos vienen como form-data
+        data = request.form.to_dict()
+    else:
+        # Sin archivo: datos vienen como JSON
+        data = request.get_json()
+    
+    return AdvancePaymentController.create_advance_payment(
+        data, current_user_id, is_admin, receipt_file
+    )
 
 @advance_payment_bp.route('/<int:advance_payment_id>', methods=['PUT'])
 @jwt_required()

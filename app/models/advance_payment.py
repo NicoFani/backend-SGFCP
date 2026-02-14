@@ -7,7 +7,7 @@ class AdvancePayment(db.Model):
     driver_id = db.Column(db.Integer, db.ForeignKey('driver.id', ondelete='CASCADE'), nullable=False)
     date = db.Column(db.Date, nullable=False)
     amount = db.Column(db.Float, nullable=False)
-    receipt = db.Column(db.String(75))
+    receipt = db.Column(db.String(255))  # URL de Supabase Storage
 
     def to_dict(self):
         return {

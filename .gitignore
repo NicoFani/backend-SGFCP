@@ -166,3 +166,7 @@ cython_debug/
 test_*.py
 temp_*.py
 backup_*.sql
+
+# Uploads
+uploads/
+!uploads/.gitkeep

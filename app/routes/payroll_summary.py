@@ -63,7 +63,7 @@ def generate_summaries():
     except ValidationError as e:
         return jsonify({'success': False, 'errors': e.messages}), 400
     except ValueError as e:
-        return jsonify({'success': False, 'message': str(e)}), 400
+        return jsonify({'success': False, 'error': str(e)}), 400
     except Exception as e:
         import traceback
         print(f"ERROR generando resúmenes: {e}")
