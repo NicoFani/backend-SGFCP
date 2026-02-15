@@ -520,7 +520,9 @@ p {
 }
 
 .view.active {
-  display: block;
+  display: grid;
+  gap: 28px;
+  padding: 6px 0 12px;
 }
 
 #overview.view.active {
@@ -566,8 +568,50 @@ p {
 
 .grid-2 {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr));
   gap: 24px;
+}
+
+@media (min-width: 1400px) {
+  .grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Layout especial para gráficos principales: línea + torta */
+.grid-charts-main {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: 1fr;
+}
+
+/* En pantallas medianas (tablets landscape): dar más espacio al gráfico de líneas */
+@media (min-width: 900px) {
+  .grid-charts-main {
+    grid-template-columns: 1.8fr 1fr;
+  }
+}
+
+/* En pantallas grandes: aún más espacio para el gráfico de líneas */
+@media (min-width: 1200px) {
+  .grid-charts-main {
+    grid-template-columns: 2fr 1fr;
+  }
+}
+
+/* En pantallas muy pequeñas: apilar verticalmente */
+@media (max-width: 899px) {
+  .grid-charts-main {
+    grid-template-columns: 1fr;
+  }
+  
+  .grid-charts-main .card:first-child {
+    order: 1;
+  }
+  
+  .grid-charts-main .card:last-child {
+    order: 2;
+  }
 }
 
 .card {
@@ -614,14 +658,72 @@ p {
   color: var(--ink);
 }
 
-.chart-card--compact canvas {
-  height: 340px !important;
+/* Contenedor responsive para gráficos */
+.chart-card canvas {
+  width: 100% !important;
+  height: auto !important;
+  max-height: 400px;
 }
 
+.chart-card--compact canvas {
+  max-height: 350px;
+}
+
+/* Gráfico de doughnut centrado y con tamaño controlado */
 #chartExpenses {
   display: block;
   max-width: 360px;
+  max-height: 360px;
   margin: 0 auto;
+}
+
+/* En pantallas grandes donde el doughnut tiene menos espacio, reducir tamaño */
+@media (min-width: 900px) {
+  #chartExpenses {
+    max-width: 320px;
+    max-height: 320px;
+  }
+}
+
+/* En pantallas muy pequeñas, hacerlo más compacto */
+@media (max-width: 600px) {
+  #chartExpenses {
+    max-width: 280px;
+    max-height: 280px;
+  }
+}
+
+/* Asegurar que los contenedores de gráficos sean responsive */
+.chart-card {
+  position: relative;
+  min-height: 200px;
+}
+
+@media (max-width: 1400px) {
+  .chart-card canvas {
+    max-height: 380px;
+  }
+  .chart-card--compact canvas {
+    max-height: 340px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .chart-card canvas {
+    max-height: 350px;
+  }
+  .chart-card--compact canvas {
+    max-height: 320px;
+  }
+}
+
+@media (max-width: 768px) {
+  .chart-card canvas {
+    max-height: 300px;
+  }
+  .chart-card--compact canvas {
+    max-height: 280px;
+  }
 }
 
 .chart-modal {
@@ -654,12 +756,12 @@ p {
   border-radius: 20px;
   border: 1px solid var(--stroke);
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.2);
-  width: min(960px, 90vw);
+  width: min(1200px, 92vw);
   max-height: 90vh;
-  padding: 20px;
+  padding: 24px;
   display: grid;
   grid-template-rows: auto 1fr;
-  gap: 12px;
+  gap: 16px;
   transition: background 0.3s ease;
 }
 
@@ -671,13 +773,34 @@ p {
 }
 
 .chart-modal__body {
-  min-height: 420px;
+  min-height: 300px;
+  max-height: calc(90vh - 120px);
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
 }
 
 .chart-modal__body canvas {
   width: 100% !important;
-  height: 100% !important;
+  height: auto !important;
+  max-height: 100%;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+@media (max-width: 768px) {
+  .chart-modal__panel {
+    width: 95vw;
+    padding: 16px;
+    max-height: 95vh;
+  }
+  
+  .chart-modal__body {
+    min-height: 250px;
+    max-height: calc(95vh - 100px);
+  }
 }
 
 .card-head {

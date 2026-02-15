@@ -44,8 +44,10 @@ function toggleTheme() {
   localStorage.setItem('sgfcp_theme', state.theme);
   document.documentElement.setAttribute('data-theme', state.theme);
   updateThemeIcon();
-  // Regenerar gráficos con nuevos colores
-  renderCharts();
+  // Regenerar gráficos con nuevos colores solo si no hay modal abierto
+  if (!state.modal.activeChartId) {
+    renderCharts();
+  }
 }
 
 const $ = (id) => document.getElementById(id);
@@ -302,6 +304,11 @@ function renderKpis() {
 }
 
 function renderCharts() {
+  // No regenerar si hay un modal de gráfico abierto
+  if (state.modal.activeChartId) {
+    return;
+  }
+  
   const trips = state.filtered.trips;
   const expenses = state.filtered.expenses;
   const advances = state.filtered.advances;
@@ -448,13 +455,24 @@ function buildChart(id, type, data) {
   const formatValue = (value) =>
     isCountChart ? number.format(value) : currency.format(value);
 
+  // Definir aspect ratio apropiado para cada tipo de gráfico
+  let aspectRatio = 2; // Default para line/bar charts (más ancho que alto)
+  if (isDoughnut) {
+    aspectRatio = 1.1; // Casi cuadrado para doughnut
+  } else if (type === "line") {
+    // Gráfico de líneas más ancho en pantallas grandes
+    aspectRatio = window.innerWidth >= 1200 ? 2.5 : window.innerWidth >= 900 ? 2.2 : 1.8;
+  } else if (type === "bar") {
+    aspectRatio = 1.8; // Proporcional para barras
+  }
+
   state.charts[id] = new Chart(element, {
     type,
     data,
     options: {
       responsive: true,
-      maintainAspectRatio: !isDoughnut,
-      aspectRatio: isDoughnut ? 1.1 : undefined,
+      maintainAspectRatio: true,
+      aspectRatio: aspectRatio,
       plugins: {
         legend: { display: type !== "bar" || id === "chartRevenue" },
         tooltip: {
@@ -746,6 +764,11 @@ function render() {
 function bindEvents() {
   document.querySelectorAll(".nav-item").forEach((item) => {
     item.addEventListener("click", () => {
+      // No cambiar de vista si hay un modal abierto
+      if (state.modal.activeChartId) {
+        return;
+      }
+      
       document.querySelectorAll(".nav-item").forEach((btn) => {
         btn.classList.remove("active");
       });
@@ -755,6 +778,11 @@ function bindEvents() {
       document.querySelectorAll(".view").forEach((section) => {
         section.classList.toggle("active", section.id === view);
       });
+      
+      // Regenerar gráficos después de cambiar de vista para asegurar correcta visualización
+      setTimeout(() => {
+        renderCharts();
+      }, 100);
     });
   });
 
@@ -775,27 +803,36 @@ function bindEvents() {
 
   function closeModal() {
     if (!state.modal.activeChartId) return;
+    
     const chartId = state.modal.activeChartId;
     const canvas = $(chartId);
-    if (canvas && state.modal.originalParent) {
-      if (state.modal.originalNext) {
-        state.modal.originalParent.insertBefore(
-          canvas,
-          state.modal.originalNext
-        );
-      } else {
-        state.modal.originalParent.appendChild(canvas);
-      }
-    }
+    
     modal.classList.remove("active");
     modal.setAttribute("aria-hidden", "true");
+    
+    // Intentar devolver el canvas a su posición original
+    if (canvas && state.modal.originalParent) {
+      // Verificar que el padre original todavía existe en el DOM
+      if (document.body.contains(state.modal.originalParent)) {
+        if (state.modal.originalNext && document.body.contains(state.modal.originalNext)) {
+          state.modal.originalParent.insertBefore(canvas, state.modal.originalNext);
+        } else {
+          state.modal.originalParent.appendChild(canvas);
+        }
+      }
+    }
+    
+    const previousChartId = state.modal.activeChartId;
     state.modal.activeChartId = null;
     state.modal.originalParent = null;
     state.modal.originalNext = null;
 
-    if (canvas && state.charts[chartId]) {
-      state.charts[chartId].resize();
-    }
+    // Resize después de que el canvas vuelva a su lugar original
+    setTimeout(() => {
+      // Regenerar todos los gráficos para asegurar que estén sincronizados
+      // (por si hubo cambio de tema u otros cambios mientras el modal estaba abierto)
+      renderCharts();
+    }, 50);
   }
 
   document.querySelectorAll(".chart-expand").forEach((button) => {
@@ -816,9 +853,12 @@ function bindEvents() {
       modal.classList.add("active");
       modal.setAttribute("aria-hidden", "false");
 
-      if (state.charts[chartId]) {
-        state.charts[chartId].resize();
-      }
+      // Resize después de que el modal esté visible y el canvas movido
+      setTimeout(() => {
+        if (state.charts[chartId]) {
+          state.charts[chartId].resize();
+        }
+      }, 50);
     });
   });
 
@@ -828,6 +868,25 @@ function bindEvents() {
     if (event.key === "Escape") {
       closeModal();
     }
+  });
+
+  // Actualizar gráficos cuando se redimensiona la ventana
+  let resizeTimeout;
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+      // Si hay un modal abierto, solo hacer resize sin regenerar
+      if (state.modal.activeChartId) {
+        Object.values(state.charts).forEach((chart) => {
+          if (chart && typeof chart.resize === "function") {
+            chart.resize();
+          }
+        });
+      } else {
+        // Si no hay modal, regenerar gráficos para ajustar aspect ratios
+        renderCharts();
+      }
+    }, 250);
   });
 }
 
