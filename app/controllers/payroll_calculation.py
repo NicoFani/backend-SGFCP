@@ -126,9 +126,15 @@ class PayrollCalculationController:
             summary.error_message = 'Resumen en espera de finalización de viajes en curso'
             return summary
         
-        # 1. Calcular comisión por viajes (validar tarifas)
+        # 1. Calcular comisión por viajes
+        # En generación automática se valida tarifa obligatoria (puede dar error).
+        # En generación manual se ignoran viajes sin tarifa.
         commission_result = PayrollCalculationController._calculate_trip_commission(
-            summary, period, driver, commission_pct
+            summary,
+            period,
+            driver,
+            commission_pct,
+            strict_rate_validation=not is_manual
         )
         
         if commission_result['has_error']:
@@ -147,7 +153,10 @@ class PayrollCalculationController:
         
         # 3. Calcular adelantos a descontar
         advances_deducted = PayrollCalculationController._calculate_advances(
-            summary, period, driver
+            summary,
+            period,
+            driver,
+            included_trip_ids=commission_result.get('included_trip_ids', [])
         )
         
         # 4. Calcular otros conceptos (ajustes, bonificaciones, cargos extra, multas sin viaje)
@@ -249,11 +258,18 @@ class PayrollCalculationController:
         return Decimal('0.00')
     
     @staticmethod
-    def _calculate_trip_commission(summary, period, driver, commission_pct):
+    def _calculate_trip_commission(
+        summary,
+        period,
+        driver,
+        commission_pct,
+        strict_rate_validation=True
+    ):
         """
         Calcular comisión por viajes del período.
         Incluye SOLO viajes FINALIZADOS que iniciaron en el período.
-        Valida que todos los viajes tengan tarifa.
+        Cuando strict_rate_validation=True, valida que todos tengan tarifa.
+        Cuando strict_rate_validation=False, omite viajes sin tarifa.
         """
         # Obtener viajes finalizados del chofer que INICIARON en el período
         trips = Trip.query.filter(
@@ -265,18 +281,30 @@ class PayrollCalculationController:
             )
         ).all()
         
-        # Validar que todos los viajes tengan tarifa
-        trips_without_rate = []
-        for trip in trips:
-            if trip.rate is None or trip.rate == 0:
-                trips_without_rate.append(f"{trip.document_type} {trip.document_number}")
-        
-        if trips_without_rate:
+        # Detectar viajes sin tarifa
+        trips_without_rate = [
+            trip for trip in trips
+            if trip.rate is None or trip.rate == 0
+        ]
+
+        # En generación automática, viajes sin tarifa generan error
+        if strict_rate_validation and trips_without_rate:
+            trip_labels = [
+                f"{trip.document_type} {trip.document_number}"
+                for trip in trips_without_rate
+            ]
             return {
                 'has_error': True,
-                'error_message': f"Los siguientes viajes no tienen tarifa cargada: {', '.join(trips_without_rate)}",
+                'error_message': f"Los siguientes viajes no tienen tarifa cargada: {', '.join(trip_labels)}",
                 'commission': Decimal('0.00')
             }
+
+        # En generación manual, excluir viajes sin tarifa del cálculo
+        if not strict_rate_validation:
+            trips = [
+                trip for trip in trips
+                if trip.rate is not None and trip.rate != 0
+            ]
         
         total_base = Decimal('0.00')
         
@@ -330,10 +358,25 @@ class PayrollCalculationController:
         # Retornar total de comisiones
         # commission_pct ya viene en formato decimal (0.14 = 14%), no dividir entre 100
         commission = total_base * commission_pct
+        included_trip_ids = []
+        for trip in trips:
+            trip_has_rate = trip.rate is not None and trip.rate != 0
+            if not trip_has_rate:
+                continue
+
+            if trip.calculated_per_km:
+                has_base = bool(trip.estimated_kms and trip.rate)
+            else:
+                has_base = bool(trip.load_weight_on_unload and trip.rate)
+
+            if has_base:
+                included_trip_ids.append(trip.id)
+
         return {
             'has_error': False,
             'error_message': None,
-            'commission': commission
+            'commission': commission,
+            'included_trip_ids': included_trip_ids
         }
     
     @staticmethod
@@ -429,8 +472,11 @@ class PayrollCalculationController:
         return expenses_to_reimburse, expenses_to_deduct
     
     @staticmethod
-    def _calculate_advances(summary, period, driver):
+    def _calculate_advances(summary, period, driver, included_trip_ids=None):
         """Calcular adelantos a descontar (administrador + cliente)."""
+        if included_trip_ids is None:
+            included_trip_ids = []
+
         # 1. Adelantos dados por el administrador
         advances = AdvancePayment.query.filter(
             and_(
@@ -456,15 +502,16 @@ class PayrollCalculationController:
             db.session.add(detail)
         
         # 2. Adelantos dados por el cliente (asociados a viajes del período)
-        trips_with_client_advance = Trip.query.filter(
-            and_(
-                Trip.driver_id == driver.id,
-                Trip.start_date >= period.start_date,
-                Trip.start_date <= period.end_date,
-                Trip.client_advance_payment.isnot(None),
-                Trip.client_advance_payment > 0
-            )
-        ).all()
+        if included_trip_ids:
+            trips_with_client_advance = Trip.query.filter(
+                and_(
+                    Trip.id.in_(included_trip_ids),
+                    Trip.client_advance_payment.isnot(None),
+                    Trip.client_advance_payment > 0
+                )
+            ).all()
+        else:
+            trips_with_client_advance = []
         
         for trip in trips_with_client_advance:
             amount = Decimal(str(trip.client_advance_payment))
@@ -660,10 +707,6 @@ class PayrollCalculationController:
         period = PayrollPeriod.query.get(summary.period_id)
         driver = Driver.query.get(summary.driver_id)
         
-        # Guardar el estado actual para determinar el nuevo estado después del recálculo
-        previous_status = summary.status
-        is_manual = not summary.is_auto_generated
-        
         # Limpiar detalles existentes para recalcular
         PayrollDetail.query.filter_by(summary_id=summary.id).delete()
         db.session.flush()
@@ -700,9 +743,14 @@ class PayrollCalculationController:
             db.session.commit()
             return summary
         
-        # 1. Calcular comisión por viajes (validar tarifas)
+        # 1. Calcular comisión por viajes
+        # Solo generación automática valida tarifa obligatoria.
         commission_result = PayrollCalculationController._calculate_trip_commission(
-            summary, period, driver, commission_pct
+            summary,
+            period,
+            driver,
+            commission_pct,
+            strict_rate_validation=summary.is_auto_generated
         )
         
         if commission_result['has_error']:
@@ -727,7 +775,10 @@ class PayrollCalculationController:
         
         # 3. Calcular adelantos
         advances_deducted = PayrollCalculationController._calculate_advances(
-            summary, period, driver
+            summary,
+            period,
+            driver,
+            included_trip_ids=commission_result.get('included_trip_ids', [])
         )
         
         # 4. Calcular otros conceptos
@@ -759,22 +810,10 @@ class PayrollCalculationController:
         summary.other_items_total = other_items_total
         summary.total_amount = total_amount
         
-        # Determinar estado final basado en el estado previo
-        # Reglas:
-        # 1. Si estaba en 'error' y ahora se recalcula correctamente → 'pending_approval'
-        # 2. Si estaba en 'pending_approval' → mantener 'pending_approval'
-        # 3. Si estaba en 'calculation_pending' → 'pending_approval'
-        # 4. Si estaba en 'draft' → mantener 'draft'
-        
-        if previous_status in ['error', 'pending_approval', 'calculation_pending']:
-            # Error corregido, pending o calculation_pending → pending_approval
-            summary.status = 'pending_approval'
-        elif previous_status == 'draft':
-            # Si estaba en draft, mantener draft
-            summary.status = 'draft'
-        else:
-            # Caso por defecto (no debería llegar aquí normalmente)
-            summary.status = 'pending_approval' if summary.is_auto_generated else 'draft'
+        # Estado final según origen del resumen:
+        # - Manual: siempre draft
+        # - Automático: pending_approval (si ya pasó validaciones)
+        summary.status = 'pending_approval' if summary.is_auto_generated else 'draft'
         
         db.session.commit()
         return summary
