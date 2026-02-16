@@ -142,6 +142,10 @@ class PayrollCalculationController:
             summary.status = 'error'
             summary.error_message = commission_result['error_message']
             summary.commission_from_trips = Decimal('0.00')
+            PayrollCalculationController._create_missing_rate_details(
+                summary,
+                commission_result.get('missing_rate_trips', [])
+            )
             return summary
         
         commission_from_trips = commission_result['commission']
@@ -293,10 +297,18 @@ class PayrollCalculationController:
                 f"{trip.document_type} {trip.document_number}"
                 for trip in trips_without_rate
             ]
+            missing_rate_trips = [
+                {
+                    'trip_id': trip.id,
+                    'description': f"{trip.origin} → {trip.destination}"
+                }
+                for trip in trips_without_rate
+            ]
             return {
                 'has_error': True,
                 'error_message': f"Los siguientes viajes no tienen tarifa cargada: {', '.join(trip_labels)}",
-                'commission': Decimal('0.00')
+                'commission': Decimal('0.00'),
+                'missing_rate_trips': missing_rate_trips
             }
 
         # En generación manual, excluir viajes sin tarifa del cálculo
@@ -378,6 +390,19 @@ class PayrollCalculationController:
             'commission': commission,
             'included_trip_ids': included_trip_ids
         }
+
+    @staticmethod
+    def _create_missing_rate_details(summary, missing_rate_trips):
+        """Crear detalles para viajes sin tarifa en resúmenes con error."""
+        for trip_data in missing_rate_trips:
+            detail = PayrollDetail(
+                summary_id=summary.id,
+                detail_type='trip_missing_rate',
+                trip_id=trip_data.get('trip_id'),
+                description=f"Viaje sin tarifa - {trip_data.get('description', 'Sin descripción')}",
+                amount=Decimal('0.00')
+            )
+            db.session.add(detail)
     
     @staticmethod
     def _calculate_expenses(summary, period, driver):
@@ -763,6 +788,10 @@ class PayrollCalculationController:
             summary.advances_deducted = Decimal('0.00')
             summary.other_items_total = Decimal('0.00')
             summary.total_amount = Decimal('0.00')
+            PayrollCalculationController._create_missing_rate_details(
+                summary,
+                commission_result.get('missing_rate_trips', [])
+            )
             db.session.commit()
             return summary
         

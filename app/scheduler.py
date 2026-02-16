@@ -247,7 +247,7 @@ def generate_auto_payroll_summaries():
         # SIMULACIÓN: Cambiado para probar generación automática
         # today = datetime.now().date()
         from datetime import date
-        today = date(2026, 12, 31)  # Simular que es el último día de febrero
+        today = date(2026, 7, 31)  # Simular que es el último día de febrero
         
         # Buscar períodos que terminan hoy
         periods = PayrollPeriod.query.filter(
@@ -329,29 +329,8 @@ def recalculate_pending_payroll_summaries(driver_id, period_id):
             f"chofer {driver_id} en período {period_id}"
         )
         
-        # Obtener el período
-        period = PayrollPeriod.query.get(period_id)
-        if not period:
-            logger.error(f"Período {period_id} no encontrado")
-            return
-        
-        # Obtener el chofer
-        from app.models.driver import Driver
-        driver = Driver.query.get(driver_id)
-        if not driver:
-            logger.error(f"Chofer {driver_id} no encontrado")
-            return
-        
-        # Eliminar el resumen anterior para regenerarlo
-        db.session.delete(summary)
-        db.session.flush()
-        
-        # Regenerar el resumen (is_manual=False para mantener como automático)
-        new_summary = PayrollCalculationController._calculate_summary(
-            period, driver, is_manual=False
-        )
-        
-        db.session.commit()
+        # Recalcular en el mismo registro para conservar el ID y evitar 404 en frontend
+        new_summary = PayrollCalculationController.recalculate_summary(summary.id)
         
         logger.info(
             f"Resumen recalculado para chofer {driver_id} en período {period_id}: "
