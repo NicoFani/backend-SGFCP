@@ -448,8 +448,8 @@ class PayrollCalculationController:
             
             elif expense.expense_type == 'Reparaciones':
                 # Reparaciones: depende de paid_by_admin
-                if expense.paid_by_admin is False:
-                    # Lo pagó el chofer, se reintegra
+                if expense.paid_by_admin is not True:
+                    # Lo pagó el chofer (False o None), se reintegra
                     expenses_to_reimburse += amount
                     detail = PayrollDetail(
                         summary_id=summary.id,
@@ -463,8 +463,8 @@ class PayrollCalculationController:
             
             elif expense.expense_type == 'Combustible':
                 # Combustible: depende de paid_by_admin
-                if expense.paid_by_admin is False:
-                    # Lo pagó el chofer, se reintegra
+                if expense.paid_by_admin is not True:
+                    # Lo pagó el chofer (False o None), se reintegra
                     expenses_to_reimburse += amount
                     detail = PayrollDetail(
                         summary_id=summary.id,
@@ -478,8 +478,8 @@ class PayrollCalculationController:
             
             elif expense.expense_type == 'Peaje':
                 # Peaje: depende de paid_by_admin
-                if expense.paid_by_admin is False:
-                    # Lo pagó el chofer, se reintegra
+                if expense.paid_by_admin is not True:
+                    # Lo pagó el chofer (False o None), se reintegra
                     expenses_to_reimburse += amount
                     detail = PayrollDetail(
                         summary_id=summary.id,
@@ -493,8 +493,8 @@ class PayrollCalculationController:
             
             elif expense.expense_type == 'Viáticos':
                 # Viáticos: depende de paid_by_admin
-                if expense.paid_by_admin is False:
-                    # Lo pagó el chofer, se reintegra
+                if expense.paid_by_admin is not True:
+                    # Lo pagó el chofer (False o None), se reintegra
                     expenses_to_reimburse += amount
                     detail = PayrollDetail(
                         summary_id=summary.id,
