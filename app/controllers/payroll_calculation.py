@@ -56,12 +56,24 @@ class PayrollCalculationController:
                     f"Ya existe un resumen aprobado para el chofer {driver.user.name} {driver.user.surname} en este período"
                 )
             
-            # Eliminar resumen draft/pending/error/calculation_pending existente (regenerar)
+            # Verificar que no exista un resumen pendiente de aprobación
+            existing_pending = PayrollSummary.query.filter_by(
+                period_id=period_id,
+                driver_id=driver.id,
+                status='pending_approval'
+            ).first()
+            
+            if existing_pending:
+                raise ValueError(
+                    f"Ya existe un resumen pendiente de aprobación para el chofer {driver.user.name} {driver.user.surname} en este período"
+                )
+            
+            # Eliminar resumen draft/error/calculation_pending existente (regenerar)
             existing = PayrollSummary.query.filter(
                 and_(
                     PayrollSummary.period_id == period_id,
                     PayrollSummary.driver_id == driver.id,
-                    PayrollSummary.status.in_(['draft', 'pending_approval', 'error', 'calculation_pending'])
+                    PayrollSummary.status.in_(['draft', 'error', 'calculation_pending'])
                 )
             ).first()
             
