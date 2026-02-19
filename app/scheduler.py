@@ -247,7 +247,7 @@ def generate_auto_payroll_summaries():
         # SIMULACIÓN: Cambiado para probar generación automática
         # today = datetime.now().date()
         from datetime import date
-        today = date(2026, 7, 31)  # Simular que es el último día de febrero
+        today = date(2026, 2, 28)  # Simular que es el último día de febrero
         
         # Buscar períodos que terminan hoy
         periods = PayrollPeriod.query.filter(

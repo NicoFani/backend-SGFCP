@@ -4,6 +4,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from marshmallow import ValidationError
 from ..models.trip import Trip
 from ..models.driver import Driver
+from ..models.payroll_period import PayrollPeriod
+from ..models.payroll_summary import PayrollSummary
 from ..models.base import db
 from ..schemas.trip import TripSchema, TripUpdateSchema
 from ..controllers.notification import NotificationController
@@ -111,6 +113,22 @@ class TripController:
         try:
             trip = Trip.query.get_or_404(trip_id)
             previous_state = trip.state_id
+
+            # Bloqueo por período aprobado (único bloqueo funcional)
+            period = PayrollPeriod.query.filter(
+                PayrollPeriod.start_date <= trip.start_date,
+                PayrollPeriod.end_date >= trip.start_date
+            ).first()
+            if period:
+                approved_summary = PayrollSummary.query.filter_by(
+                    period_id=period.id,
+                    driver_id=trip.driver_id,
+                    status='approved'
+                ).first()
+                if approved_summary:
+                    return jsonify({
+                        'error': 'No puedes modificar este viaje: el período del chofer está aprobado'
+                    }), 403
             
             # Verificar permisos: solo admin o el conductor asignado al viaje
             if not is_admin:
@@ -143,6 +161,13 @@ class TripController:
                     
                     # Chofer iniciando viaje: puede cargar datos de inicio
                     allowed_fields = [
+                        'origin',                   # Origen
+                        'origin_description',       # Descripción origen
+                        'destination',              # Destino
+                        'destination_description',  # Descripción destino
+                        'start_date',               # Fecha de inicio
+                        'client_id',                # Cliente
+                        'driver_id',                # Chofer asignado
                         'document_type',            # Tipo de documento (CTG/Remito)
                         'document_number',          # Número de documento
                         'estimated_kms',            # Kms a recorrer
@@ -159,6 +184,7 @@ class TripController:
                 elif trip.state_id == 'En curso':
                     # Chofer con viaje en curso: puede ajustar datos operativos
                     allowed_fields = [
+                        'start_date',               # Fecha inicio
                         'document_type',            # Tipo de documento (CTG/Remito)
                         'document_number',          # Número de documento
                         'estimated_kms',            # Kms a recorrer
@@ -178,6 +204,7 @@ class TripController:
                     # Estado Finalizado: chofer puede corregir datos operativos/financieros
                     # (ej. tarifa cargada después de finalizar), sin cambiar estado.
                     allowed_fields = [
+                        'start_date',               # Fecha inicio
                         'document_type',            # Tipo de documento (CTG/Remito)
                         'document_number',          # Número de documento
                         'estimated_kms',            # Kms a recorrer
@@ -213,6 +240,10 @@ class TripController:
                 validated_data = filtered_data
             
             # Actualizar campos
+            # Normalizaciones para campos booleanos y montos asociados
+            if 'fuel_on_client' in validated_data and not validated_data.get('fuel_on_client'):
+                validated_data['fuel_liters'] = 0.0
+
             for field, value in validated_data.items():
                 setattr(trip, field, value)
             
@@ -260,7 +291,6 @@ class TripController:
                 # Recalcular resúmenes en "calculation_pending" para este chofer
                 try:
                     from app.scheduler import recalculate_pending_payroll_summaries
-                    from ..models.payroll_period import PayrollPeriod
                     
                     # Encontrar el período que contiene este viaje
                     period = PayrollPeriod.query.filter(
