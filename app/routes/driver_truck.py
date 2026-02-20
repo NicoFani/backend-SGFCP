@@ -41,6 +41,17 @@ def get_current_truck_by_driver(driver_id):
     else:
         return jsonify({'error': 'No hay camión asignado'}), 404
 
+@driver_truck_bp.route('/truck/<int:truck_id>/current-assignment', methods=['GET'])
+@jwt_required()
+@admin_required()
+def get_current_assignment_by_truck(truck_id):
+    """Obtiene la asignación actual de un camión (la más reciente)"""
+    assignment = DriverTruckController.get_current_assignment_by_truck(truck_id)
+    if assignment:
+        return jsonify(assignment), 200
+    else:
+        return jsonify({'error': 'No hay asignación para este camión'}), 404
+
 @driver_truck_bp.route('/<int:driver_truck_id>', methods=['GET'])
 @jwt_required()
 @admin_required()

@@ -13,6 +13,13 @@ def get_drivers():
     is_admin = get_jwt().get('is_admin', False)
     return DriverController.get_all_drivers(current_user_id, is_admin)
 
+# GET all drivers with truck assignment status (para selector de camiones)
+@driver_bp.route('/truck-status', methods=['GET'])
+@jwt_required()
+@admin_required()
+def get_drivers_with_truck_status():
+    return DriverController.get_drivers_with_truck_status()
+
 # GET one driver (solo el propio conductor o admin)
 @driver_bp.route('/<int:driver_id>', methods=['GET'])
 @jwt_required()

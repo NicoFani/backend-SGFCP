@@ -64,6 +64,19 @@ class DriverTruckController:
             return None
 
     @staticmethod
+    def get_current_assignment_by_truck(truck_id):
+        """Obtiene la asignación actual de un camión (la más reciente por fecha)"""
+        try:
+            assignment = DriverTruck.query.filter_by(truck_id=truck_id).order_by(DriverTruck.date.desc()).first()
+
+            if not assignment:
+                return None
+
+            return assignment.to_dict()
+        except SQLAlchemyError:
+            return None
+
+    @staticmethod
     def get_driver_truck_by_id(driver_truck_id):
         """Obtiene una asignación por ID"""
         try:
