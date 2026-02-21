@@ -243,60 +243,62 @@ def generate_auto_payroll_summaries():
     - Excel de los resúmenes en 'pending_approval'
     - Lista de resúmenes en otros estados (calculation_pending, error)
     """
-    try:
-        # SIMULACIÓN: Cambiado para probar generación automática
-        # today = datetime.now().date()
-        from datetime import date
-        today = date(2026, 2, 28)  # Simular que es el último día de febrero
-        
-        # Buscar períodos que terminan hoy
-        periods = PayrollPeriod.query.filter(
-            PayrollPeriod.end_date == today
-        ).all()
-        
-        if not periods:
-            logger.info(f"No hay períodos que terminen hoy ({today})")
-            return
-        
-        logger.info(f"Generando resúmenes automáticos para {len(periods)} período(s) que terminan hoy")
-        
-        for period in periods:
-            try:
-                # Generar resúmenes automáticamente (is_manual=False)
-                summaries = PayrollCalculationController.generate_summaries(
-                    period_id=period.id,
-                    driver_ids=None,  # Todos los choferes activos
-                    is_manual=False
-                )
-                
-                logger.info(
-                    f"Período {period.start_date} - {period.end_date}: "
-                    f"{len(summaries)} resúmenes generados"
-                )
-                
-                # Registrar resúmenes por estado
-                for summary in summaries:
-                    logger.info(
-                        f"  - Chofer {summary.driver_id}: {summary.status} "
-                        f"(Total: ${summary.total_amount})"
+    if not _flask_app:
+        logger.error("No hay instancia de Flask disponible para ejecutar el scheduler")
+        return
+    
+    with _flask_app.app_context():
+        try:
+            # SIMULACIÓN: Cambiado para probar generación automática
+            # today = datetime.now().date()
+            from datetime import date
+            today = date(2026, 2, 28)  # Simular que es el último día de febrero
+            
+            # Buscar períodos que terminan hoy
+            periods = PayrollPeriod.query.filter(
+                PayrollPeriod.end_date == today
+            ).all()
+            
+            if not periods:
+                logger.info(f"No hay períodos que terminen hoy ({today})")
+                return
+            
+            logger.info(f"Generando resúmenes automáticos para {len(periods)} período(s) que terminan hoy")
+            
+            for period in periods:
+                try:
+                    # Generar resúmenes automáticamente (is_manual=False)
+                    summaries = PayrollCalculationController.generate_summaries(
+                        period_id=period.id,
+                        driver_ids=None,  # Todos los choferes activos
+                        is_manual=False
                     )
-                
-                # Enviar email con los resúmenes
-                if _flask_app:
+                    
+                    logger.info(
+                        f"Período {period.start_date} - {period.end_date}: "
+                        f"{len(summaries)} resúmenes generados"
+                    )
+                    
+                    # Registrar resúmenes por estado
+                    for summary in summaries:
+                        logger.info(
+                            f"  - Chofer {summary.driver_id}: {summary.status} "
+                            f"(Total: ${summary.total_amount})"
+                        )
+                    
+                    # Enviar email con los resúmenes
                     logger.info(f"Enviando email con resúmenes del período {period.id}")
                     _send_payroll_email(_flask_app, period, summaries)
-                else:
-                    logger.warning("No se puede enviar email: app no disponible")
+                        
+                except Exception as e:
+                    logger.error(f"Error generando resúmenes para período {period.id}: {str(e)}")
+                    import traceback
+                    logger.error(traceback.format_exc())
                     
-            except Exception as e:
-                logger.error(f"Error generando resúmenes para período {period.id}: {str(e)}")
-                import traceback
-                logger.error(traceback.format_exc())
-                
-    except Exception as e:
-        logger.error(f"Error en generación automática de resúmenes: {str(e)}")
-        import traceback
-        logger.error(traceback.format_exc())
+        except Exception as e:
+            logger.error(f"Error en generación automática de resúmenes: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
 
 
 def recalculate_pending_payroll_summaries(driver_id, period_id):
@@ -307,42 +309,47 @@ def recalculate_pending_payroll_summaries(driver_id, period_id):
         driver_id: ID del chofer
         period_id: ID del período
     """
-    try:
-        from app.models.payroll_summary import PayrollSummary
-        
-        # Buscar el resumen en calculation_pending para este chofer en este período
-        summary = PayrollSummary.query.filter_by(
-            period_id=period_id,
-            driver_id=driver_id,
-            status='calculation_pending'
-        ).first()
-        
-        if not summary:
-            logger.debug(
-                f"No hay resumen en 'calculation_pending' para "
+    if not _flask_app:
+        logger.error("No hay instancia de Flask disponible para recalcular resúmenes")
+        return
+    
+    with _flask_app.app_context():
+        try:
+            from app.models.payroll_summary import PayrollSummary
+            
+            # Buscar el resumen en calculation_pending para este chofer en este período
+            summary = PayrollSummary.query.filter_by(
+                period_id=period_id,
+                driver_id=driver_id,
+                status='calculation_pending'
+            ).first()
+            
+            if not summary:
+                logger.debug(
+                    f"No hay resumen en 'calculation_pending' para "
+                    f"chofer {driver_id} en período {period_id}"
+                )
+                return
+            
+            logger.info(
+                f"Recalculando resumen en 'calculation_pending' para "
                 f"chofer {driver_id} en período {period_id}"
             )
-            return
-        
-        logger.info(
-            f"Recalculando resumen en 'calculation_pending' para "
-            f"chofer {driver_id} en período {period_id}"
-        )
-        
-        # Recalcular en el mismo registro para conservar el ID y evitar 404 en frontend
-        new_summary = PayrollCalculationController.recalculate_summary(summary.id)
-        
-        logger.info(
-            f"Resumen recalculado para chofer {driver_id} en período {period_id}: "
-            f"nuevo estado = {new_summary.status}"
-        )
-        
-    except Exception as e:
-        logger.error(
-            f"Error recalculando resumen en 'calculation_pending' para "
-            f"chofer {driver_id} en período {period_id}: {str(e)}"
-        )
-        db.session.rollback()
+            
+            # Recalcular en el mismo registro para conservar el ID y evitar 404 en frontend
+            new_summary = PayrollCalculationController.recalculate_summary(summary.id)
+            
+            logger.info(
+                f"Resumen recalculado para chofer {driver_id} en período {period_id}: "
+                f"nuevo estado = {new_summary.status}"
+            )
+            
+        except Exception as e:
+            logger.error(
+                f"Error recalculando resumen en 'calculation_pending' para "
+                f"chofer {driver_id} en período {period_id}: {str(e)}"
+            )
+            db.session.rollback()
 
 
 def start_scheduler(app):
