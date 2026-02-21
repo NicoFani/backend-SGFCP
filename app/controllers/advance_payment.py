@@ -44,6 +44,19 @@ class AdvancePaymentController:
             return jsonify(advance_payment.to_dict()), 200
         except Exception as e:
             return jsonify({'error': 'Anticipo no encontrado'}), 404
+    
+    @staticmethod
+    def get_advance_payments_by_driver(driver_id, current_user_id=None, is_admin=False):
+        """Obtiene todos los anticipos de un chofer específico"""
+        try:
+            # Verificar permisos: solo admin o el propio chofer
+            if not is_admin and driver_id != current_user_id:
+                return jsonify({'error': 'No tienes permisos para ver estos anticipos'}), 403
+            
+            advance_payments = AdvancePayment.query.filter_by(driver_id=driver_id).order_by(AdvancePayment.date.desc()).all()
+            return jsonify([ap.to_dict() for ap in advance_payments]), 200
+        except SQLAlchemyError as e:
+            return jsonify({'error': 'Error al obtener anticipos del chofer', 'details': str(e)}), 500
 
     @staticmethod
     def get_advance_payments_by_driver(driver_id, current_user_id=None, is_admin=False):

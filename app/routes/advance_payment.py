@@ -26,6 +26,13 @@ def get_advance_payment(advance_payment_id):
     is_admin = get_jwt().get('is_admin', False)
     return AdvancePaymentController.get_advance_payment_by_id(advance_payment_id, current_user_id, is_admin)
 
+@advance_payment_bp.route('/driver/<int:driver_id>', methods=['GET'])
+@jwt_required()
+def get_advance_payments_by_driver(driver_id):
+    current_user_id = int(get_jwt_identity())
+    is_admin = get_jwt().get('is_admin', False)
+    return AdvancePaymentController.get_advance_payments_by_driver(driver_id, current_user_id, is_admin)
+
 @advance_payment_bp.route('/', methods=['POST'])
 @jwt_required()
 @admin_required()
