@@ -34,6 +34,8 @@ class PayrollSummarySchema(Schema):
     guaranteed_minimum_applied = fields.Decimal(as_string=True, dump_only=True)
     advances_deducted = fields.Decimal(as_string=True, dump_only=True)
     other_items_total = fields.Decimal(as_string=True, dump_only=True)
+    balance_in_favor = fields.Decimal(as_string=True, dump_only=True)
+    balance_against = fields.Decimal(as_string=True, dump_only=True)
     total_amount = fields.Decimal(as_string=True, dump_only=True)
     status = fields.Str(dump_only=True, validate=validate.OneOf([
         'calculation_pending', 'pending_approval', 'error', 'draft', 'approved'

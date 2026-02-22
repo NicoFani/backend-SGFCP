@@ -122,6 +122,8 @@ class PayrollCalculationController:
             guaranteed_minimum_applied=Decimal('0.00'),
             advances_deducted=Decimal('0.00'),
             other_items_total=Decimal('0.00'),
+            balance_in_favor=Decimal('0.00'),
+            balance_against=Decimal('0.00'),
             total_amount=Decimal('0.00')
         )
         db.session.add(summary)
@@ -185,15 +187,24 @@ class PayrollCalculationController:
         if commission_from_trips < minimum_guaranteed:
             guaranteed_minimum_applied = minimum_guaranteed - commission_from_trips
         
-        # 6. Calcular total final
-        total_amount = (
+        # 6. Calcular saldo a favor y saldo en contra
+        # Saldo a favor: suma de ganancias (conceptos positivos)
+        balance_in_favor = (
             commission_from_trips +
             expenses_to_reimburse +
             guaranteed_minimum_applied +
-            other_items_total -
-            expenses_to_deduct -
-            advances_deducted
+            (other_items_total if other_items_total > 0 else Decimal('0.00'))
         )
+        
+        # Saldo en contra: suma de deducciones (conceptos negativos, guardado como positivo)
+        balance_against = (
+            expenses_to_deduct +
+            advances_deducted +
+            (abs(other_items_total) if other_items_total < 0 else Decimal('0.00'))
+        )
+        
+        # Total: saldo a favor menos saldo en contra
+        total_amount = balance_in_favor - balance_against
         
         # Actualizar resumen con totales
         summary.commission_from_trips = commission_from_trips
@@ -202,6 +213,8 @@ class PayrollCalculationController:
         summary.guaranteed_minimum_applied = guaranteed_minimum_applied
         summary.advances_deducted = advances_deducted
         summary.other_items_total = other_items_total
+        summary.balance_in_favor = balance_in_favor
+        summary.balance_against = balance_against
         summary.total_amount = total_amount
         
         # Determinar estado final
@@ -776,6 +789,8 @@ class PayrollCalculationController:
             summary.guaranteed_minimum_applied = Decimal('0.00')
             summary.advances_deducted = Decimal('0.00')
             summary.other_items_total = Decimal('0.00')
+            summary.balance_in_favor = Decimal('0.00')
+            summary.balance_against = Decimal('0.00')
             summary.total_amount = Decimal('0.00')
             db.session.commit()
             return summary
@@ -799,6 +814,8 @@ class PayrollCalculationController:
             summary.guaranteed_minimum_applied = Decimal('0.00')
             summary.advances_deducted = Decimal('0.00')
             summary.other_items_total = Decimal('0.00')
+            summary.balance_in_favor = Decimal('0.00')
+            summary.balance_against = Decimal('0.00')
             summary.total_amount = Decimal('0.00')
             PayrollCalculationController._create_missing_rate_details(
                 summary,
@@ -832,15 +849,24 @@ class PayrollCalculationController:
         if commission_from_trips < minimum_guaranteed:
             guaranteed_minimum_applied = minimum_guaranteed - commission_from_trips
         
-        # 6. Calcular total final
-        total_amount = (
+        # 6. Calcular saldo a favor y saldo en contra
+        # Saldo a favor: suma de ganancias (conceptos positivos)
+        balance_in_favor = (
             commission_from_trips +
             expenses_to_reimburse +
             guaranteed_minimum_applied +
-            other_items_total -
-            expenses_to_deduct -
-            advances_deducted
+            (other_items_total if other_items_total > 0 else Decimal('0.00'))
         )
+        
+        # Saldo en contra: suma de deducciones (conceptos negativos, guardado como positivo)
+        balance_against = (
+            expenses_to_deduct +
+            advances_deducted +
+            (abs(other_items_total) if other_items_total < 0 else Decimal('0.00'))
+        )
+        
+        # Total: saldo a favor menos saldo en contra
+        total_amount = balance_in_favor - balance_against
         
         # Actualizar totales
         summary.commission_from_trips = commission_from_trips
@@ -849,6 +875,8 @@ class PayrollCalculationController:
         summary.guaranteed_minimum_applied = guaranteed_minimum_applied
         summary.advances_deducted = advances_deducted
         summary.other_items_total = other_items_total
+        summary.balance_in_favor = balance_in_favor
+        summary.balance_against = balance_against
         summary.total_amount = total_amount
         
         # Estado final según origen del resumen:

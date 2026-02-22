@@ -25,7 +25,11 @@ class PayrollSummary(db.Model):
     guaranteed_minimum_applied = db.Column(db.Numeric(12, 2), default=0.0)
     advances_deducted = db.Column(db.Numeric(12, 2), default=0.0)
     other_items_total = db.Column(db.Numeric(12, 2), default=0.0)
-    total_amount = db.Column(db.Numeric(12, 2), nullable=False)
+    
+    # Saldos para mostrar en resumen
+    balance_in_favor = db.Column(db.Numeric(12, 2), default=0.0)  # Suma de ganancias
+    balance_against = db.Column(db.Numeric(12, 2), default=0.0)   # Suma de deducciones (valor positivo)
+    total_amount = db.Column(db.Numeric(12, 2), nullable=False)   # balance_in_favor - balance_against
     
     # Estados: calculation_pending, pending_approval, error, draft, approved
     status = db.Column(db.String(20), nullable=False, default='draft')

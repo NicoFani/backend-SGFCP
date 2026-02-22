@@ -249,6 +249,25 @@ class PayrollExportController:
             for col in range(1, 4):
                 ws.cell(row=row, column=col).border = thin_border
         
+        # Saldo a favor y saldo en contra
+        row += 2
+        ws[f'A{row}'] = 'Saldo a favor'
+        ws[f'A{row}'].font = Font(bold=True, size=12)
+        ws[f'C{row}'] = float(summary.balance_in_favor)
+        ws[f'C{row}'].number_format = '$#,##0.00'
+        ws[f'C{row}'].font = Font(bold=True, size=12)
+        for col in range(1, 4):
+            ws.cell(row=row, column=col).border = thin_border
+        
+        row += 1
+        ws[f'A{row}'] = 'Saldo en contra'
+        ws[f'A{row}'].font = Font(bold=True, size=12)
+        ws[f'C{row}'] = float(summary.balance_against)
+        ws[f'C{row}'].number_format = '$#,##0.00'
+        ws[f'C{row}'].font = Font(bold=True, size=12)
+        for col in range(1, 4):
+            ws.cell(row=row, column=col).border = thin_border
+        
         # Total final
         row += 1
         ws[f'A{row}'] = 'TOTAL A PAGAR'
@@ -402,18 +421,25 @@ class PayrollExportController:
             ['Adelantos', f"-${float(summary.advances_deducted):,.2f}"],
             ['Otros conceptos', f"${float(summary.other_items_total):,.2f}"],
             ['', ''],
+            ['Saldo a favor', f"${float(summary.balance_in_favor):,.2f}"],
+            ['Saldo en contra', f"${float(summary.balance_against):,.2f}"],
+            ['', ''],
             ['TOTAL A PAGAR', f"${float(summary.total_amount):,.2f}"]
         ]
         
         summary_table = Table(summary_data, colWidths=[4*inch, 2*inch])
         summary_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (0, -3), colors.lightgrey),
+            ('BACKGROUND', (0, 0), (0, -4), colors.lightgrey),
+            ('BACKGROUND', (0, -3), (0, -2), colors.HexColor('#D9EAD3')),
             ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#FFC000')),
             ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
             ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+            ('FONTNAME', (0, -3), (0, -2), 'Helvetica-Bold'),
             ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, -3), (-1, -2), 12),
             ('FONTSIZE', (0, -1), (-1, -1), 14),
-            ('GRID', (0, 0), (-1, -2), 1, colors.black),
+            ('GRID', (0, 0), (-1, -4), 1, colors.black),
+            ('GRID', (0, -3), (-1, -2), 1, colors.black),
             ('GRID', (0, -1), (-1, -1), 2, colors.black),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 12)
         ]))
